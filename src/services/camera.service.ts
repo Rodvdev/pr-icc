@@ -7,7 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { CameraStatus as PrismaCameraStatus } from '@prisma/client'
+import { CameraStatus as PrismaCameraStatus, Prisma } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -288,13 +288,13 @@ export class CameraService {
     level: string,
     message: string,
     meta?: Prisma.JsonValue
-  ): Promise<CameraLog> {
+  ): Promise<Prisma.CameraLogGetPayload<Record<string, never>>> {
     return prisma.cameraLog.create({
       data: {
         cameraId,
         level,
         message,
-        meta: meta ?? null,
+        meta: meta ?? undefined,
       }
     })
   }
@@ -305,7 +305,7 @@ export class CameraService {
   async getCameraLogs(
     cameraId: string,
     limit = 100
-  ): Promise<CameraLog[]> {
+  ): Promise<Prisma.CameraLogGetPayload<Record<string, never>>[]> {
     return prisma.cameraLog.findMany({
       where: { cameraId },
       orderBy: { createdAt: 'desc' },

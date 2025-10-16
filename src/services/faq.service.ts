@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
+import { Prisma } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -307,12 +308,12 @@ export class FAQService {
   async createQAPair(
     data: CreateQAPairData,
     actorUserId: string
-  ): Promise<QAPair> {
+  ): Promise<Prisma.QAPairGetPayload<Record<string, never>>> {
     const qaPair = await prisma.qAPair.create({
       data: {
         question: data.question,
         answer: data.answer,
-        metadata: data.metadata || {},
+        metadata: data.metadata as Prisma.InputJsonValue || undefined,
         isActive: true
       }
     })
@@ -332,7 +333,7 @@ export class FAQService {
   /**
    * Get QA pair by ID
    */
-  async getQAPairById(qaPairId: string): Promise<QAPair | null> {
+  async getQAPairById(qaPairId: string): Promise<Prisma.QAPairGetPayload<Record<string, never>> | null> {
     return prisma.qAPair.findUnique({
       where: { id: qaPairId }
     })
@@ -347,7 +348,7 @@ export class FAQService {
     limit?: number
     offset?: number
   }): Promise<{
-    qaPairs: QAPair[]
+    qaPairs: Prisma.QAPairGetPayload<Record<string, never>>[]
     total: number
   }> {
     const {
@@ -389,7 +390,7 @@ export class FAQService {
     qaPairId: string,
     data: UpdateQAPairData,
     actorUserId: string
-  ): Promise<QAPair> {
+  ): Promise<Prisma.QAPairGetPayload<Record<string, never>>> {
     const qaPair = await prisma.qAPair.update({
       where: { id: qaPairId },
       data: {
@@ -416,7 +417,7 @@ export class FAQService {
   async deleteQAPair(
     qaPairId: string,
     actorUserId: string
-  ): Promise<QAPair> {
+  ): Promise<Prisma.QAPairGetPayload<Record<string, never>>> {
     const qaPair = await prisma.qAPair.delete({
       where: { id: qaPairId }
     })
