@@ -286,7 +286,7 @@ export class CameraService {
     cameraId: string,
     level: string,
     message: string,
-    meta?: Record<string, unknown>
+    meta?: unknown
   ): Promise<Awaited<ReturnType<typeof prisma.cameraLog.create>>> {
     return prisma.cameraLog.create({
       data: {

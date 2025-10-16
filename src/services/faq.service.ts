@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
+import { Prisma } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -312,7 +313,7 @@ export class FAQService {
       data: {
         question: data.question,
         answer: data.answer,
-        metadata: data.metadata || undefined,
+        metadata: data.metadata as unknown as Prisma.JsonValue || undefined,
         isActive: true
       }
     })
@@ -394,7 +395,7 @@ export class FAQService {
       where: { id: qaPairId },
       data: {
         ...data,
-        metadata: data.metadata !== undefined ? data.metadata : undefined
+        metadata: data.metadata !== undefined ? data.metadata as unknown as Prisma.NullableJsonNullValueInput : undefined
       }
     })
 
