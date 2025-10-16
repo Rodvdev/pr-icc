@@ -23,7 +23,7 @@ export interface Camera {
   moduleId: string | null
   name: string
   streamUrl: string | null
-  status: string
+  status: CameraStatus
   lastHeartbeat: Date | null
   ownerUserId: string | null
   createdAt: Date

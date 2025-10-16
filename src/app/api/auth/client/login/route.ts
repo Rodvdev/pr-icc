@@ -74,6 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Login exitoso - no incluir hashedPassword en respuesta
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { hashedPassword: _, ...clientData } = client
 
     return NextResponse.json({
