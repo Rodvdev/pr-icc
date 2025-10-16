@@ -26,14 +26,10 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse query parameters
-    const searchParams = request.nextUrl.searchParams
-    const query = searchParams.get('query') || undefined
-    const category = searchParams.get('category') || undefined
-    const tagsParam = searchParams.get('tags')
-    const tags = tagsParam ? tagsParam.split(',') : undefined
-    const isActive = searchParams.get('isActive') === 'false' ? false : true
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const query = request.nextUrl.searchParams.get('query') || undefined
+    const isActive = request.nextUrl.searchParams.get('isActive') === 'false' ? false : true
+    const limit = parseInt(request.nextUrl.searchParams.get('limit') || '50')
+    const offset = parseInt(request.nextUrl.searchParams.get('offset') || '0')
 
     // Search QA pairs
     const result = await faqService.searchQAPairs({
@@ -76,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     // Parse body
     const body = await request.json()
-    const { question, answer, category, tags } = body
+    const { question, answer } = body
 
     // Validate required fields
     if (!question || !answer) {

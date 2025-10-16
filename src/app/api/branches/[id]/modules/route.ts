@@ -78,7 +78,7 @@ export async function POST(
 
     // Parse body
     const body = await request.json()
-    const { moduleNumber, moduleType, location } = body
+    const { moduleNumber, moduleType } = body
 
     // Validate required fields
     if (!moduleNumber || !moduleType) {

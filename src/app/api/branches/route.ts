@@ -14,7 +14,7 @@ import { branchService } from '@/services'
  * GET /api/branches
  * List all branches
  */
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     // Check authentication
     const session = await getServerSession(authOptions)
@@ -24,9 +24,6 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       )
     }
-
-    // Parse query parameters
-    const searchParams = request.nextUrl.searchParams
 
     // Get branches
     const branches = await branchService.getAllBranches()

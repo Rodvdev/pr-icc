@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -30,7 +30,7 @@ interface ClientData {
  * - Accesos rápidos a servicios
  * - Estado de visitas y documentos pendientes
  */
-export default function KioskWelcomePage() {
+function KioskWelcomeContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const clientId = searchParams.get('clientId')
@@ -281,6 +281,28 @@ export default function KioskWelcomePage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function KioskWelcomePage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-6 max-w-4xl">
+        <Card className="p-8">
+          <div className="space-y-6">
+            <Skeleton className="h-12 w-64 mx-auto" />
+            <Skeleton className="h-6 w-48 mx-auto" />
+            <div className="grid md:grid-cols-3 gap-4 mt-8">
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+              <Skeleton className="h-32" />
+            </div>
+          </div>
+        </Card>
+      </div>
+    }>
+      <KioskWelcomeContent />
+    </Suspense>
   )
 }
 

@@ -77,9 +77,6 @@ export async function PATCH(
     const body = await request.json()
     const {
       name,
-      ipAddress,
-      model,
-      location,
       streamUrl,
       status,
       branchId,

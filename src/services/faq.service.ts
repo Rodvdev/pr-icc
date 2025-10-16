@@ -7,7 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { FAQStatus as PrismaFAQStatus } from '@prisma/client'
+import { FAQStatus as PrismaFAQStatus, Prisma } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -33,7 +33,7 @@ export interface QAPair {
   id: string
   question: string
   answer: string
-  metadata: any
+  metadata: Prisma.JsonValue
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -62,7 +62,7 @@ export interface CreateQAPairData {
 export interface UpdateQAPairData {
   question?: string
   answer?: string
-  metadata?: any
+  metadata?: Prisma.JsonValue
   isActive?: boolean
 }
 
@@ -313,7 +313,7 @@ export class FAQService {
       data: {
         question: data.question,
         answer: data.answer,
-        metadata: data.metadata as any,
+        metadata: (data.metadata || {}) as Prisma.InputJsonValue,
         isActive: true
       }
     })
@@ -393,7 +393,10 @@ export class FAQService {
   ): Promise<QAPair> {
     const qaPair = await prisma.qAPair.update({
       where: { id: qaPairId },
-      data
+      data: {
+        ...data,
+        metadata: data.metadata ? data.metadata as Prisma.InputJsonValue : undefined
+      }
     })
 
     await audit({

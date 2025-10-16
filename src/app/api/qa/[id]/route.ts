@@ -75,7 +75,7 @@ export async function PATCH(
 
     // Parse body
     const body = await request.json()
-    const { question, answer, category, tags, isActive } = body
+    const { question, answer, isActive } = body
 
     // Check if QA pair exists
     const existingQA = await faqService.getQAPairById(id)

@@ -8,19 +8,78 @@ import {
   CheckCircle,
   MessageSquare,
   Calendar,
-  FileText,
   ArrowRight,
   Bell
 } from "lucide-react"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
+import { useEffect, useState } from "react"
+
+interface ClientStats {
+  totalVisits: number
+  upcomingAppointments: number
+  unreadMessages: number
+  recentActivity: Array<{
+    id: string
+    type: string
+    description: string
+    date: string
+    status: string
+  }>
+}
 
 export default function ClientDashboard() {
+  const { data: session } = useSession()
+  const [stats, setStats] = useState<ClientStats>({
+    totalVisits: 0,
+    upcomingAppointments: 0,
+    unreadMessages: 0,
+    recentActivity: []
+  })
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const fetchClientStats = async () => {
+      try {
+        const response = await fetch('/api/client/stats')
+        if (response.ok) {
+          const data = await response.json()
+          setStats(data)
+        }
+      } catch (error) {
+        console.error('Error fetching client stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchClientStats()
+  }, [])
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/3 mb-2"></div>
+          <div className="h-4 bg-gray-200 rounded w-1/2"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="animate-pulse">
+              <div className="h-32 bg-gray-200 rounded"></div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          Bienvenido a tu Portal
+          Bienvenido, {session?.user?.name || 'Cliente'}
         </h1>
         <p className="text-gray-600 mt-1">
           Gestiona tu información y accede a nuestros servicios
@@ -52,7 +111,7 @@ export default function ClientDashboard() {
             <Clock className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">12</div>
+            <div className="text-2xl font-bold">{stats.totalVisits}</div>
             <p className="text-xs text-gray-500 mt-1">
               En los últimos 6 meses
             </p>
@@ -67,9 +126,11 @@ export default function ClientDashboard() {
             <Calendar className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">-</div>
+            <div className="text-2xl font-bold">
+              {stats.upcomingAppointments > 0 ? stats.upcomingAppointments : '-'}
+            </div>
             <p className="text-xs text-gray-500 mt-1">
-              Sin citas programadas
+              {stats.upcomingAppointments > 0 ? 'Citas programadas' : 'Sin citas programadas'}
             </p>
           </CardContent>
         </Card>
@@ -82,9 +143,9 @@ export default function ClientDashboard() {
             <MessageSquare className="h-4 w-4 text-gray-400" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">3</div>
+            <div className="text-2xl font-bold">{stats.unreadMessages}</div>
             <p className="text-xs text-gray-500 mt-1">
-              2 no leídos
+              {stats.unreadMessages > 0 ? 'mensajes no leídos' : 'Todos leídos'}
             </p>
           </CardContent>
         </Card>
@@ -108,7 +169,7 @@ export default function ClientDashboard() {
           </CardHeader>
           <CardContent>
             <Button asChild className="w-full">
-              <Link href="/client/chat">
+              <Link href="/client/help">
                 Iniciar Chat
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Link>
@@ -150,46 +211,28 @@ export default function ClientDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-start gap-4 pb-4 border-b last:border-0">
-              <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Visita completada</p>
-                <p className="text-xs text-gray-500">
-                  Sucursal San Isidro - Hace 3 días
-                </p>
-              </div>
-              <Badge variant="secondary">Completada</Badge>
+          {stats.recentActivity.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">
+              No hay actividad reciente
+            </p>
+          ) : (
+            <div className="space-y-4">
+              {stats.recentActivity.map((activity) => (
+                <div key={activity.id} className="flex items-start gap-4 pb-4 border-b last:border-0">
+                  <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                    <CheckCircle className="h-4 w-4 text-green-600" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{activity.description}</p>
+                    <p className="text-xs text-gray-500">
+                      {activity.date}
+                    </p>
+                  </div>
+                  <Badge variant="secondary">{activity.status}</Badge>
+                </div>
+              ))}
             </div>
-
-            <div className="flex items-start gap-4 pb-4 border-b last:border-0">
-              <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                <MessageSquare className="h-4 w-4 text-blue-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Consulta por chat</p>
-                <p className="text-xs text-gray-500">
-                  Información de servicios - Hace 1 semana
-                </p>
-              </div>
-              <Badge variant="secondary">Resuelta</Badge>
-            </div>
-
-            <div className="flex items-start gap-4">
-              <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-                <FileText className="h-4 w-4 text-indigo-600" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Perfil actualizado</p>
-                <p className="text-xs text-gray-500">
-                  Información de contacto - Hace 2 semanas
-                </p>
-              </div>
-              <Badge variant="secondary">Actualizada</Badge>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 

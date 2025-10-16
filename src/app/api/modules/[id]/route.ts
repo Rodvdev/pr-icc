@@ -78,9 +78,7 @@ export async function PATCH(
     const {
       moduleNumber,
       moduleType,
-      status,
-      location,
-      assignedAgentId
+      status
     } = body
 
     // Check if module exists

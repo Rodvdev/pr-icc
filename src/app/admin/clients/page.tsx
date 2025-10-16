@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Search, MoreHorizontal, UserPlus, Download, Filter } from "lucide-react"
 import { ClientDialog } from "@/components/admin/client-dialog"
-import type { Client } from "@prisma/client"
+import type { Client } from "@/services/client.service"
 
 export default function ClientsPage() {
   const [clients, setClients] = useState<Client[]>([])
@@ -97,9 +97,8 @@ export default function ClientsPage() {
   const getStatusBadge = (status: string) => {
     const variants = {
       ACTIVE: "default",
-      PENDING: "secondary",
       BLOCKED: "destructive",
-      INACTIVE: "outline"
+      DELETED: "outline"
     } as const
 
     return (
@@ -186,11 +185,11 @@ export default function ClientsPage() {
                 <DropdownMenuItem onClick={() => setStatusFilter("ACTIVE")}>
                   Activos
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setStatusFilter("PENDING")}>
-                  Pendientes
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => setStatusFilter("BLOCKED")}>
                   Bloqueados
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setStatusFilter("DELETED")}>
+                  Eliminados
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>

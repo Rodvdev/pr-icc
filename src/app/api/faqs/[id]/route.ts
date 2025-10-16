@@ -75,7 +75,7 @@ export async function PATCH(
 
     // Parse body
     const body = await request.json()
-    const { title, answer, tags, category, status } = body
+    const { title, answer, tags, status } = body
 
     // Check if FAQ exists
     const existingFaq = await faqService.getFAQById(id)

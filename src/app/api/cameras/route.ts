@@ -27,12 +27,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse query parameters
-    const searchParams = request.nextUrl.searchParams
-    const branchId = searchParams.get('branchId') || undefined
-    const moduleId = searchParams.get('moduleId') || undefined
-    const status = searchParams.get('status') as CameraStatus | undefined
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const branchId = request.nextUrl.searchParams.get('branchId') || undefined
+    const moduleId = request.nextUrl.searchParams.get('moduleId') || undefined
+    const status = request.nextUrl.searchParams.get('status') as CameraStatus | undefined
+    const limit = parseInt(request.nextUrl.searchParams.get('limit') || '50')
+    const offset = parseInt(request.nextUrl.searchParams.get('offset') || '0')
 
     // Search cameras
     const result = await cameraService.searchCameras({
@@ -81,8 +80,6 @@ export async function POST(request: NextRequest) {
       ipAddress,
       branchId,
       moduleId,
-      model,
-      location,
       streamUrl
     } = body
 

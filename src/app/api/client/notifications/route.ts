@@ -87,7 +87,7 @@ export async function PATCH(req: NextRequest) {
       )
     }
 
-    const _notificationData = await req.json()
+    await req.json()
 
     // TODO: Implement actual notification update
     return NextResponse.json({

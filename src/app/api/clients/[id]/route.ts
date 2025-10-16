@@ -89,7 +89,7 @@ export async function PATCH(
 
     // Parse body
     const body = await request.json()
-    const { name, email, phone, address, dateOfBirth } = body
+    const { name, email, phone } = body
 
     // Check if client exists
     const existingClient = await clientService.getClientById(id)

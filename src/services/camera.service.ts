@@ -7,7 +7,6 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { CameraStatus as PrismaCameraStatus } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -24,7 +23,7 @@ export interface Camera {
   moduleId: string | null
   name: string
   streamUrl: string | null
-  status: PrismaCameraStatus
+  status: string
   lastHeartbeat: Date | null
   ownerUserId: string | null
   createdAt: Date
@@ -37,7 +36,7 @@ export interface CameraLog {
   cameraId: string
   level: string
   message: string
-  meta: any
+  meta: Record<string, unknown> | null
   createdAt: Date
 }
 
@@ -294,7 +293,7 @@ export class CameraService {
         cameraId,
         level,
         message,
-        meta: (meta || {}) as any,
+        meta: meta || {},
       }
     })
   }

@@ -74,7 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Login exitoso - no incluir hashedPassword en respuesta
-    const { hashedPassword: _hashedPassword, ...clientData } = client
+    const { hashedPassword: _, ...clientData } = client
 
     return NextResponse.json({
       client: clientData,

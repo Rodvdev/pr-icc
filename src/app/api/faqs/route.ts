@@ -27,14 +27,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Parse query parameters
-    const searchParams = request.nextUrl.searchParams
-    const query = searchParams.get('query') || undefined
-    const status = searchParams.get('status') as FAQStatus | undefined
-    const category = searchParams.get('category') || undefined
-    const tagsParam = searchParams.get('tags')
+    const query = request.nextUrl.searchParams.get('query') || undefined
+    const status = request.nextUrl.searchParams.get('status') as FAQStatus | undefined
+    const tagsParam = request.nextUrl.searchParams.get('tags')
     const tags = tagsParam ? tagsParam.split(',') : undefined
-    const limit = parseInt(searchParams.get('limit') || '50')
-    const offset = parseInt(searchParams.get('offset') || '0')
+    const limit = parseInt(request.nextUrl.searchParams.get('limit') || '50')
+    const offset = parseInt(request.nextUrl.searchParams.get('offset') || '0')
 
     // Search FAQs
     const result = await faqService.searchFAQs({
@@ -78,7 +76,7 @@ export async function POST(request: NextRequest) {
 
     // Parse body
     const body = await request.json()
-    const { title, answer, tags, category, status } = body
+    const { title, answer, tags, status } = body
 
     // Validate required fields
     if (!title || !answer) {
