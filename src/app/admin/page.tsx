@@ -11,13 +11,50 @@ import {
   Shield
 } from "lucide-react"
 import Link from "next/link"
+import { clientService, branchService, cameraService } from "@/services"
+import { getRecentAuditLogs } from "@/lib/audit"
+import { prisma } from "@/lib/prisma"
 
-export default function AdminDashboard() {
+export default async function AdminDashboard() {
+  // Fetch real statistics from services
+  const [clientStats, branchStats, cameraStats, chatSessionsToday] = await Promise.all([
+    clientService.getClientStats(),
+    branchService.getBranchStats(),
+    cameraService.getCameraStats(),
+    prisma.chatSession.count({
+      where: {
+        startedAt: {
+          gte: new Date(new Date().setHours(0, 0, 0, 0)) // Start of today
+        }
+      }
+    })
+  ])
+
   const stats = [
-    { title: "Clientes Activos", value: "1,234", icon: Users, color: "text-blue-600" },
-    { title: "Sucursales", value: "12", icon: Building2, color: "text-green-600" },
-    { title: "Cámaras Online", value: "48", icon: Camera, color: "text-purple-600" },
-    { title: "Conversaciones Hoy", value: "156", icon: MessageSquare, color: "text-orange-600" },
+    { 
+      title: "Clientes Activos", 
+      value: clientStats.active.toLocaleString(), 
+      icon: Users, 
+      color: "text-blue-600" 
+    },
+    { 
+      title: "Sucursales", 
+      value: branchStats.totalBranches.toString(), 
+      icon: Building2, 
+      color: "text-green-600" 
+    },
+    { 
+      title: "Cámaras Online", 
+      value: cameraStats.online.toString(), 
+      icon: Camera, 
+      color: "text-purple-600" 
+    },
+    { 
+      title: "Conversaciones Hoy", 
+      value: chatSessionsToday.toLocaleString(), 
+      icon: MessageSquare, 
+      color: "text-orange-600" 
+    },
   ]
 
   const quickActions = [
@@ -115,44 +152,112 @@ export default function AdminDashboard() {
       </div>
 
       {/* Recent Activity */}
-      <div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">
-          Actividad Reciente
-        </h3>
-        <Card>
-          <CardHeader>
-            <CardTitle>Últimas Acciones</CardTitle>
-            <CardDescription>
-              Registro de actividades del sistema
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
+      <RecentActivity />
+    </div>
+  )
+}
+
+// Helper function to format time ago
+function formatTimeAgo(date: Date): string {
+  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000)
+  
+  if (seconds < 60) return 'hace un momento'
+  const minutes = Math.floor(seconds / 60)
+  if (minutes < 60) return `hace ${minutes} minuto${minutes > 1 ? 's' : ''}`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `hace ${hours} hora${hours > 1 ? 's' : ''}`
+  const days = Math.floor(hours / 24)
+  return `hace ${days} día${days > 1 ? 's' : ''}`
+}
+
+// Helper function to get icon and color for audit action
+function getActionDisplay(action: string): { 
+  icon: typeof UserPlus, 
+  color: string, 
+  text: string 
+} {
+  switch (action) {
+    case 'CLIENT_CREATED':
+      return { icon: UserPlus, color: 'text-green-600', text: 'Nuevo cliente registrado' }
+    case 'REGISTRATION_APPROVED':
+      return { icon: Shield, color: 'text-blue-600', text: 'Registro aprobado' }
+    case 'CLIENT_BLOCKED':
+      return { icon: Shield, color: 'text-red-600', text: 'Cliente bloqueado' }
+    case 'CLIENT_UNBLOCKED':
+      return { icon: Shield, color: 'text-green-600', text: 'Cliente desbloqueado' }
+    case 'DETECTION_LOGGED':
+      return { icon: Camera, color: 'text-purple-600', text: 'Detección facial exitosa' }
+    case 'CAMERA_CREATED':
+      return { icon: Camera, color: 'text-blue-600', text: 'Nueva cámara registrada' }
+    case 'BRANCH_CREATED':
+      return { icon: Building2, color: 'text-green-600', text: 'Nueva sucursal creada' }
+    case 'FAQ_CREATED':
+      return { icon: MessageSquare, color: 'text-orange-600', text: 'Nueva FAQ creada' }
+    case 'LOGIN_SUCCESS':
+      return { icon: Shield, color: 'text-blue-600', text: 'Inicio de sesión exitoso' }
+    default:
+      return { icon: Shield, color: 'text-gray-600', text: action.replace(/_/g, ' ').toLowerCase() }
+  }
+}
+
+async function RecentActivity() {
+  // Fetch recent audit logs
+  const recentLogs = await getRecentAuditLogs(10, 0)
+
+  return (
+    <div>
+      <h3 className="text-xl font-semibold text-gray-900 mb-6">
+        Actividad Reciente
+      </h3>
+      <Card>
+        <CardHeader>
+          <CardTitle>Últimas Acciones</CardTitle>
+          <CardDescription>
+            Registro de actividades del sistema
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {recentLogs.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-8">
+              No hay actividad reciente
+            </p>
+          ) : (
             <div className="space-y-4">
-              <div className="flex items-center space-x-4">
-                <UserPlus className="h-4 w-4 text-green-600" />
-                <div>
-                  <p className="text-sm font-medium">Nuevo cliente registrado</p>
-                  <p className="text-xs text-gray-500">Juan Pérez - hace 2 minutos</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Shield className="h-4 w-4 text-blue-600" />
-                <div>
-                  <p className="text-sm font-medium">Registro aprobado</p>
-                  <p className="text-xs text-gray-500">María González - hace 5 minutos</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-4">
-                <Camera className="h-4 w-4 text-purple-600" />
-                <div>
-                  <p className="text-sm font-medium">Detección facial exitosa</p>
-                  <p className="text-xs text-gray-500">Carlos Rodríguez - hace 8 minutos</p>
-                </div>
-              </div>
+              {recentLogs.slice(0, 5).map((log: {
+                id: string
+                action: string
+                createdAt: Date
+                actorUser: { name: string | null } | null
+                targetClient: { name: string | null } | null
+              }) => {
+                const display = getActionDisplay(log.action)
+                const userName = log.actorUser?.name || log.targetClient?.name || 'Sistema'
+                
+                return (
+                  <div key={log.id} className="flex items-center space-x-4">
+                    <display.icon className={`h-4 w-4 ${display.color}`} />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">{display.text}</p>
+                      <p className="text-xs text-gray-500">
+                        {userName} - {formatTimeAgo(log.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                )
+              })}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          )}
+          {recentLogs.length > 0 && (
+            <div className="mt-6 pt-4 border-t">
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/admin/audit">
+                  Ver todos los registros
+                </Link>
+              </Button>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

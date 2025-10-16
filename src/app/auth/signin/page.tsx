@@ -107,7 +107,7 @@ export default function SignInPage() {
             </form>
 
             <div className="mt-6 text-center text-sm text-gray-600">
-              <p>¿Eres un cliente? <a href="/client" className="text-blue-600 hover:underline">Accede aquí</a></p>
+              <p>¿Eres un cliente? <a href="/client/login" className="text-blue-600 hover:underline">Accede aquí</a></p>
             </div>
           </CardContent>
         </Card>

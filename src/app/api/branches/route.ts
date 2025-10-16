@@ -1,58 +1,113 @@
+/**
+ * Branches API - List and Create
+ * 
+ * GET  /api/branches - List all branches
+ * POST /api/branches - Create a new branch
+ */
+
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
+import { branchService } from '@/services'
 
-export async function GET() {
+/**
+ * GET /api/branches
+ * List all branches
+ */
+export async function GET(request: NextRequest) {
   try {
-    const branches = await prisma.branch.findMany({
-      include: {
-        modules: true,
-        cameras: true,
-        admins: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            role: true,
-          },
-        },
-        _count: {
-          select: {
-            visits: true,
-          },
-        },
-      },
-    })
+    // Check authentication
+    const session = await getServerSession(authOptions)
+    if (!session) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
 
-    return NextResponse.json({ branches })
+    // Parse query parameters
+    const searchParams = request.nextUrl.searchParams
+    const includeInactive = searchParams.get('includeInactive') === 'true'
+
+    // Get branches
+    const branches = await branchService.getAllBranches(includeInactive)
+
+    return NextResponse.json({
+      success: true,
+      data: branches,
+      total: branches.length
+    })
   } catch (error) {
-    console.error('Error fetching branches:', error)
+    console.error('[API] GET /api/branches error:', error)
     return NextResponse.json(
-      { error: 'Failed to fetch branches' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }
 }
 
+/**
+ * POST /api/branches
+ * Create a new branch
+ */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json()
-    const { name, code, address, city, country } = body
+    // Check authentication
+    const session = await getServerSession(authOptions)
+    if (!session || session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { error: 'Unauthorized - Admin only' },
+        { status: 401 }
+      )
+    }
 
-    const branch = await prisma.branch.create({
-      data: {
-        name,
+    // Parse body
+    const body = await request.json()
+    const {
+      code,
+      name,
+      address,
+      city,
+      country
+    } = body
+
+    // Validate required fields
+    if (!code || !name) {
+      return NextResponse.json(
+        { error: 'Code and name are required' },
+        { status: 400 }
+      )
+    }
+
+    // Check if branch code already exists
+    const existingBranch = await branchService.getBranchByCode(code)
+    if (existingBranch) {
+      return NextResponse.json(
+        { error: 'Branch with this code already exists' },
+        { status: 409 }
+      )
+    }
+
+    // Create branch
+    const branch = await branchService.createBranch(
+      {
         code,
+        name,
         address,
         city,
-        country,
+        country
       },
-    })
+      session.user.id
+    )
 
-    return NextResponse.json({ branch }, { status: 201 })
+    return NextResponse.json({
+      success: true,
+      data: branch
+    }, { status: 201 })
   } catch (error) {
-    console.error('Error creating branch:', error)
+    console.error('[API] POST /api/branches error:', error)
     return NextResponse.json(
-      { error: 'Failed to create branch' },
+      { error: 'Internal server error' },
       { status: 500 }
     )
   }

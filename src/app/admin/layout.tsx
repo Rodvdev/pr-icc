@@ -1,5 +1,9 @@
 import { RoleGate } from "@/components/auth/role-gate"
-import Link from "next/link"
+import { AdminSidebar } from "@/components/admin/admin-sidebar"
+import { AdminHeader } from "@/components/admin/admin-header"
+import { ChatProvider } from "@/contexts/chat-context"
+import { ChatSidebarWrapper } from "@/components/chatbot/chat-sidebar-wrapper"
+import { ChatToggleButton } from "@/components/chatbot/chat-toggle-button"
 
 export default function AdminLayout({
   children,
@@ -7,31 +11,32 @@ export default function AdminLayout({
   children: React.ReactNode
 }) {
   return (
-    <RoleGate allowedRoles={["ADMIN"]}>
-      <div className="min-h-screen bg-gray-50">
-        <div className="bg-white shadow-sm border-b">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex justify-between items-center py-4">
-              <h1 className="text-2xl font-bold text-gray-900">
-                Panel de Administración
-              </h1>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-600">ADMIN</span>
-                <Link 
-                  href="/api/auth/signout" 
-                  className="text-sm text-red-600 hover:text-red-800"
-                >
-                  Cerrar Sesión
-                </Link>
+    <RoleGate allowedRoles={["ADMIN", "SUPER_ADMIN"]}>
+      <ChatProvider userType="admin">
+        <div className="flex h-screen overflow-hidden bg-gray-50">
+          {/* Sidebar */}
+          <AdminSidebar />
+
+          {/* Main content */}
+          <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
+            {/* Header */}
+            <AdminHeader />
+
+            {/* Page content */}
+            <main className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-7xl mx-auto">
+                {children}
               </div>
-            </div>
+            </main>
           </div>
+
+          {/* Chatbot Toggle Button */}
+          <ChatToggleButton />
+
+          {/* Chatbot Sidebar */}
+          <ChatSidebarWrapper userType="admin" />
         </div>
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {children}
-        </div>
-      </div>
+      </ChatProvider>
     </RoleGate>
   )
 }

@@ -71,6 +71,9 @@ model User {
   phone         String?
   role          Role     @default(AGENT)
   isActive      Boolean  @default(true)
+  // Auth fields for internal users (admins/agents)
+  password      String?
+  passwordUpdatedAt DateTime?
   // NextAuth optional fields if usas Credentials u OAuth:
   image         String?
   createdAt     DateTime @default(now())
