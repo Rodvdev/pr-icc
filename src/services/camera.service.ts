@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
+import { CameraStatus as PrismaCameraStatus } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -23,7 +24,7 @@ export interface Camera {
   moduleId: string | null
   name: string
   streamUrl: string | null
-  status: CameraStatus
+  status: PrismaCameraStatus
   lastHeartbeat: Date | null
   ownerUserId: string | null
   createdAt: Date
@@ -286,14 +287,14 @@ export class CameraService {
     cameraId: string,
     level: string,
     message: string,
-    meta?: Record<string, unknown>
+    meta?: Prisma.JsonValue
   ): Promise<CameraLog> {
     return prisma.cameraLog.create({
       data: {
         cameraId,
         level,
         message,
-        meta: meta || {},
+        meta: meta ?? null,
       }
     })
   }

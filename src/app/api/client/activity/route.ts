@@ -50,7 +50,12 @@ export async function GET(req: NextRequest) {
     })
 
     // Format activities
-    const activities = recentVisits.map((visit) => ({
+    const activities = recentVisits.map((visit: {
+      id: string;
+      status: string;
+      purpose: string | null;
+      startedAt: Date;
+    }) => ({
       id: visit.id,
       type: "visit",
       title: visit.status === "COMPLETED" ? "Visita completada" : "Visita registrada",

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { VisitStatus } from "@prisma/client"
 
 /**
  * GET /api/client/visits
@@ -20,9 +19,15 @@ export async function GET(req: NextRequest) {
     }
 
     const { searchParams } = new URL(req.url)
-    const status = searchParams.get("status")
+    const statusParam = searchParams.get("status")
     const limit = parseInt(searchParams.get("limit") || "50")
     const offset = parseInt(searchParams.get("offset") || "0")
+
+    // Validate status parameter
+    const validStatuses = ["WAITING", "IN_SERVICE", "COMPLETED", "ABANDONED"] as const
+    const status = statusParam && validStatuses.includes(statusParam as typeof validStatuses[number]) 
+      ? (statusParam as typeof validStatuses[number])
+      : undefined
 
     // For demo purposes, try to find client by email
     // In production, use proper client authentication
@@ -52,7 +57,7 @@ export async function GET(req: NextRequest) {
     // Build where clause
     const where = {
       clientId: client.id,
-      ...(status && status !== "all" ? { status: status as VisitStatus } : {})
+      ...(status ? { status } : {})
     }
 
     // Get visits with related data
