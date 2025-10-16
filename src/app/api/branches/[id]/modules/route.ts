@@ -91,10 +91,9 @@ export async function POST(
     // Create module
     const newModule = await branchService.createModule(
       {
-        moduleNumber,
-        moduleType,
-        branchId: id,
-        location
+        name: moduleType,
+        code: moduleNumber,
+        branchId: id
       },
       session.user.id
     )

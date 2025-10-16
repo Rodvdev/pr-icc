@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
+import { VisitStatus } from "@prisma/client"
 
 /**
  * GET /api/client/visits
@@ -51,7 +52,7 @@ export async function GET(req: NextRequest) {
     // Build where clause
     const where = {
       clientId: client.id,
-      ...(status && status !== "all" ? { status } : {})
+      ...(status && status !== "all" ? { status: status as VisitStatus } : {})
     }
 
     // Get visits with related data

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { faqSearch, qaSearch } from '@/lib/mcp'
+import { Prisma } from '@prisma/client'
 
 /**
  * POST /api/kiosk/chat
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
         sessionId,
         actor: 'BOT',
         content: response,
-        metadata
+        metadata: metadata as Prisma.InputJsonValue
       }
     })
 

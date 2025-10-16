@@ -42,25 +42,21 @@ export async function GET(
 
     // Agents can only see basic info, admins see everything
     if (session.user.role === 'AGENT') {
-      const { password: _password, ...safeClient } = client
       return NextResponse.json({
         success: true,
         data: {
-          id: safeClient.id,
-          email: safeClient.email,
-          name: safeClient.name,
-          dni: safeClient.dni,
-          status: safeClient.status
+          id: client.id,
+          email: client.email,
+          name: client.name,
+          dni: client.dni,
+          status: client.status
         }
       })
     }
 
-    // Remove password
-    const { password: _password, ...clientData } = client
-
     return NextResponse.json({
       success: true,
-      data: clientData
+      data: client
     })
   } catch (error) {
     console.error('[API] GET /api/clients/[id] error:', error)
@@ -121,19 +117,14 @@ export async function PATCH(
       {
         name,
         email,
-        phone,
-        address,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : undefined
+        phone
       },
       session.user.id
     )
 
-    // Remove password from response
-    const { password: _password, ...clientData } = client
-
     return NextResponse.json({
       success: true,
-      data: clientData
+      data: client
     })
   } catch (error) {
     console.error('[API] PATCH /api/clients/[id] error:', error)

@@ -96,11 +96,9 @@ export async function PATCH(
     const moduleData = await branchService.updateModule(
       id,
       {
-        moduleNumber,
-        moduleType,
-        status,
-        location,
-        assignedAgentId
+        name: moduleType,
+        code: moduleNumber,
+        isActive: status === 'ACTIVE'
       },
       session.user.id
     )

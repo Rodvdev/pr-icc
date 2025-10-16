@@ -56,12 +56,9 @@ export async function POST(
       session.user.id
     )
 
-    // Remove password from response
-    const { password: _password, ...clientData } = client
-
     return NextResponse.json({
       success: true,
-      data: clientData,
+      data: client,
       message: 'Client blocked successfully'
     })
   } catch (error) {

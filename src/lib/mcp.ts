@@ -236,7 +236,16 @@ export async function clientLookup(
       }
     })
 
-    return { client }
+    return { 
+      client: client ? {
+        id: client.id,
+        dni: client.dni || undefined,
+        name: client.name || undefined,
+        email: client.email || undefined,
+        phone: client.phone || undefined,
+        status: client.status
+      } : null
+    }
   } catch (error) {
     console.error('[MCP] Client Lookup Error:', error)
     return { client: null }
@@ -349,7 +358,7 @@ export async function getKPIs(
       }
     })
 
-    const uniqueClients = new Set(visits.map((v: { clientId: string }) => v.clientId).filter(Boolean))
+    const uniqueClients = new Set(visits.map((v: { clientId: string | null }) => v.clientId).filter(Boolean))
     const completedVisits = visits.filter((v: { status: string }) => v.status === 'COMPLETED')
     
     // Mock new vs returning calculation

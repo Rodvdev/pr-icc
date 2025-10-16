@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
+import { FAQStatus as PrismaFAQStatus } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -22,7 +23,7 @@ export interface FAQ {
   title: string
   answer: string
   tags: string[]
-  status: FAQStatus
+  status: PrismaFAQStatus
   createdAt: Date
   updatedAt: Date
 }
@@ -32,7 +33,7 @@ export interface QAPair {
   id: string
   question: string
   answer: string
-  metadata: Record<string, unknown> | null
+  metadata: any
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -61,7 +62,7 @@ export interface CreateQAPairData {
 export interface UpdateQAPairData {
   question?: string
   answer?: string
-  metadata?: Record<string, unknown> | null
+  metadata?: any
   isActive?: boolean
 }
 
@@ -312,7 +313,7 @@ export class FAQService {
       data: {
         question: data.question,
         answer: data.answer,
-        metadata: data.metadata,
+        metadata: data.metadata as any,
         isActive: true
       }
     })

@@ -140,10 +140,37 @@ export default function ClientLoginPage() {
           </CardContent>
         </Card>
 
-        <div className="text-center text-xs text-gray-500">
-          <p>Credenciales de prueba:</p>
-          <p className="font-mono mt-1">sharon.aiquipa@utec.edu.pe / client123</p>
-        </div>
+        {/* Credenciales de prueba */}
+        <Card className="border-indigo-200 bg-indigo-50">
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-indigo-900">
+                <AlertCircle className="h-4 w-4" />
+                <h3 className="font-semibold text-sm">Credenciales de Prueba - Clientes</h3>
+              </div>
+              
+              <div className="space-y-2 text-xs">
+                <div className="bg-white/60 rounded p-3 space-y-1">
+                  <p className="font-semibold text-indigo-900">Cliente 1 - Sharon Aiquipa:</p>
+                  <p className="font-mono text-gray-700">Email: sharon.aiquipa@utec.edu.pe</p>
+                  <p className="font-mono text-gray-700">Contraseña: client123</p>
+                </div>
+                
+                <div className="bg-white/60 rounded p-3 space-y-1">
+                  <p className="font-semibold text-indigo-900">Cliente 2 - Carlos Izaguirre:</p>
+                  <p className="font-mono text-gray-700">Email: carlos.izaguirre@utec.edu.pe</p>
+                  <p className="font-mono text-gray-700">Contraseña: client123</p>
+                </div>
+
+                <div className="bg-white/60 rounded p-3 space-y-1">
+                  <p className="font-semibold text-indigo-900">Cliente 3 - Rodrigo Vasquez:</p>
+                  <p className="font-mono text-gray-700">Email: rodrigo.vasquezdevel@utec.edu.pe</p>
+                  <p className="font-mono text-gray-700">Contraseña: client123</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

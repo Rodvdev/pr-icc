@@ -92,8 +92,6 @@ export async function PATCH(
       {
         question,
         answer,
-        category,
-        tags,
         isActive
       },
       session.user.id

@@ -124,6 +124,24 @@ export default function RegisterPage() {
             </Button>
           </CardContent>
         </Card>
+
+        {/* Credenciales de prueba */}
+        <Card className="max-w-md w-full mt-4 border-green-200 bg-green-50">
+          <CardContent className="pt-6">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-green-900 mb-3">
+                <CheckCircle2 className="h-4 w-4" />
+                <h3 className="font-semibold text-sm">💡 ¿Quieres probar el sistema ahora?</h3>
+              </div>
+              
+              <div className="text-xs bg-white/60 rounded p-3 space-y-1">
+                <p className="text-green-900 font-medium mb-2">Usa estas cuentas de prueba activas:</p>
+                <p className="font-mono text-gray-700">sharon.aiquipa@utec.edu.pe / client123</p>
+                <p className="font-mono text-gray-700">carlos.izaguirre@utec.edu.pe / client123</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     )
   }
@@ -366,6 +384,35 @@ export default function RegisterPage() {
                 {loading ? "Enviando..." : "Completar Registro"}
               </Button>
             )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Credenciales de prueba */}
+      <Card className="max-w-2xl w-full mt-4 border-indigo-200 bg-indigo-50">
+        <CardContent className="pt-6">
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-indigo-900">
+              <User className="h-4 w-4" />
+              <h3 className="font-semibold text-sm">¿Solo quieres probar el sistema?</h3>
+            </div>
+            
+            <div className="space-y-2 text-xs">
+              <p className="text-indigo-800">Usa estas cuentas de prueba ya activadas:</p>
+              <div className="bg-white/60 rounded p-3 space-y-1">
+                <p className="font-mono text-gray-700">📧 sharon.aiquipa@utec.edu.pe / client123</p>
+                <p className="font-mono text-gray-700">📧 carlos.izaguirre@utec.edu.pe / client123</p>
+                <p className="font-mono text-gray-700">📧 rodrigo.vasquezdevel@utec.edu.pe / client123</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/client/login")}
+                className="w-full mt-2"
+              >
+                Ir a Iniciar Sesión
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>

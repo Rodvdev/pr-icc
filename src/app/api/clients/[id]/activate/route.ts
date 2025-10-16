@@ -38,9 +38,9 @@ export async function POST(
       )
     }
 
-    if (existingClient.status !== 'PENDING') {
+    if (existingClient.status === 'ACTIVE') {
       return NextResponse.json(
-        { error: 'Client is not pending approval' },
+        { error: 'Client is already active' },
         { status: 400 }
       )
     }
@@ -48,12 +48,9 @@ export async function POST(
     // Activate client
     const client = await clientService.activateClient(id, session.user.id)
 
-    // Remove password from response
-    const { password: _password, ...clientData } = client
-
     return NextResponse.json({
       success: true,
-      data: clientData,
+      data: client,
       message: 'Client activated successfully'
     })
   } catch (error) {

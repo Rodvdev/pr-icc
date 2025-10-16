@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { faqService } from '@/services'
+import { FAQStatus } from '@/services/faq.service'
 
 /**
  * GET /api/faqs
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams
     const query = searchParams.get('query') || undefined
-    const status = searchParams.get('status') as 'DRAFT' | 'PUBLISHED' | 'ARCHIVED' | undefined
+    const status = searchParams.get('status') as FAQStatus | undefined
     const category = searchParams.get('category') || undefined
     const tagsParam = searchParams.get('tags')
     const tags = tagsParam ? tagsParam.split(',') : undefined
@@ -39,7 +40,6 @@ export async function GET(request: NextRequest) {
     const result = await faqService.searchFAQs({
       query,
       status,
-      category,
       tags,
       limit,
       offset
@@ -94,7 +94,6 @@ export async function POST(request: NextRequest) {
         title,
         answer,
         tags: tags || [],
-        category,
         status: status || 'DRAFT'
       },
       session.user.id

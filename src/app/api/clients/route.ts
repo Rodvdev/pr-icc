@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { clientService } from '@/services'
+import { ClientStatus } from '@/services/client.service'
 
 /**
  * GET /api/clients
@@ -28,7 +29,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams
     const query = searchParams.get('query') || undefined
-    const status = searchParams.get('status') as 'ACTIVE' | 'PENDING' | 'BLOCKED' | 'INACTIVE' | undefined
+    const status = searchParams.get('status') as ClientStatus | undefined
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -110,19 +111,14 @@ export async function POST(request: NextRequest) {
         password,
         name,
         dni,
-        phone,
-        address,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null
+        phone
       },
       session.user.id
     )
 
-    // Remove password from response
-    const { password: _clientPassword, ...clientData } = client
-
     return NextResponse.json({
       success: true,
-      data: clientData
+      data: client
     }, { status: 201 })
   } catch (error) {
     console.error('[API] POST /api/clients error:', error)

@@ -83,11 +83,6 @@ export default function AdminProfilePage() {
   const [passwordError, setPasswordError] = useState("")
   const [passwordSuccess, setPasswordSuccess] = useState(false)
 
-  useEffect(() => {
-    fetchProfileData()
-    fetchActivityLogs()
-  }, [session, fetchProfileData, fetchActivityLogs])
-
   const fetchProfileData = useCallback(async () => {
     if (!session?.user?.id) return
 
@@ -142,6 +137,11 @@ export default function AdminProfilePage() {
       console.error("Error fetching activity logs:", error)
     }
   }, [session])
+
+  useEffect(() => {
+    fetchProfileData()
+    fetchActivityLogs()
+  }, [session, fetchProfileData, fetchActivityLogs])
 
   const handleSaveProfile = async () => {
     setSaving(true)

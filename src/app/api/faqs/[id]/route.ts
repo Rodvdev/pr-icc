@@ -93,7 +93,6 @@ export async function PATCH(
         title,
         answer,
         tags,
-        category,
         status
       },
       session.user.id

@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { Visit } from "@/services/visit.service"
 
 /**
  * GET /api/client/activity
@@ -51,7 +50,7 @@ export async function GET(req: NextRequest) {
     })
 
     // Format activities
-    const activities = recentVisits.map((visit: Visit) => ({
+    const activities = recentVisits.map((visit) => ({
       id: visit.id,
       type: "visit",
       title: visit.status === "COMPLETED" ? "Visita completada" : "Visita registrada",
@@ -69,7 +68,7 @@ export async function GET(req: NextRequest) {
         title: "Perfil actualizado",
         description: "Información de contacto",
         timestamp: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
-        status: "completed",
+        status: "COMPLETED",
         icon: "FileText"
       })
     }

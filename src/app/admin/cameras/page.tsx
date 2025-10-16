@@ -153,11 +153,11 @@ export default function CamerasPage() {
                     </span>
                   </div>
 
-                  {camera.lastSeenAt && (
+                  {camera.lastHeartbeat && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-600">Última actividad</span>
                       <span className="text-xs">
-                        {new Date(camera.lastSeenAt).toLocaleTimeString()}
+                        {new Date(camera.lastHeartbeat).toLocaleTimeString()}
                       </span>
                     </div>
                   )}

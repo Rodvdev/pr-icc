@@ -582,6 +582,36 @@ export default function KioskRegisterPage() {
             </div>
           )}
         </Card>
+
+        {/* Credenciales de prueba */}
+        {currentStep !== 'success' && (
+          <Card className="p-6 bg-gradient-to-br from-amber-50 to-yellow-50 border-amber-200">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-amber-900">
+                <AlertCircle className="w-5 h-5" />
+                <h3 className="font-semibold text-base">💡 ¿Solo quieres probar el sistema?</h3>
+              </div>
+              
+              <div className="space-y-2 text-sm">
+                <p className="text-amber-800">Usa estas cuentas de prueba ya activadas:</p>
+                <div className="bg-white/80 rounded-lg p-4 space-y-2 border border-amber-100">
+                  <p className="font-mono text-gray-700">🆔 DNI: <span className="font-bold">72134682</span> / client123</p>
+                  <p className="font-mono text-gray-700">🆔 DNI: <span className="font-bold">12345678</span> / client123</p>
+                  <p className="font-mono text-gray-700">🆔 DNI: <span className="font-bold">70669690</span> / client123</p>
+                </div>
+                <Link href="/kiosk/login" className="block">
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="w-full mt-2"
+                  >
+                    Ir a Iniciar Sesión
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
     </div>
   )

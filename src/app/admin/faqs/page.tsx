@@ -171,10 +171,14 @@ export default function FAQsPage() {
                       <p className="text-sm text-gray-600 line-clamp-2">
                         {faq.answer}
                       </p>
-                      {faq.category && (
-                        <p className="text-xs text-gray-500">
-                          Categoría: {faq.category}
-                        </p>
+                      {faq.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {faq.tags.map((tag) => (
+                            <Badge key={tag} variant="secondary" className="text-xs">
+                              {tag}
+                            </Badge>
+                          ))}
+                        </div>
                       )}
                     </div>
                     <div className="flex gap-2 ml-4">

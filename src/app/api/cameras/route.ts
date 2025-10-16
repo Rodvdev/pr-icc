@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { cameraService } from '@/services'
+import { CameraStatus } from '@/services/camera.service'
 
 /**
  * GET /api/cameras
@@ -29,7 +30,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams
     const branchId = searchParams.get('branchId') || undefined
     const moduleId = searchParams.get('moduleId') || undefined
-    const status = searchParams.get('status') as 'ONLINE' | 'OFFLINE' | 'ERROR' | 'MAINTENANCE' | undefined
+    const status = searchParams.get('status') as CameraStatus | undefined
     const limit = parseInt(searchParams.get('limit') || '50')
     const offset = parseInt(searchParams.get('offset') || '0')
 
@@ -97,11 +98,8 @@ export async function POST(request: NextRequest) {
     const camera = await cameraService.createCamera(
       {
         name,
-        ipAddress,
         branchId,
         moduleId,
-        model,
-        location,
         streamUrl
       },
       session.user.id

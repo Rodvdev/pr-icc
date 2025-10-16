@@ -33,19 +33,17 @@ export function ClientDialog({
     name: "",
     dni: "",
     phone: "",
-    address: "",
   })
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (client) {
       setFormData({
-        email: client.email,
+        email: client.email || "",
         password: "",
         name: client.name || "",
         dni: client.dni || "",
         phone: client.phone || "",
-        address: client.address || "",
       })
     } else {
       setFormData({
@@ -54,7 +52,6 @@ export function ClientDialog({
         name: "",
         dni: "",
         phone: "",
-        address: "",
       })
     }
   }, [client, open])
@@ -171,16 +168,6 @@ export function ClientDialog({
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="address">Dirección</Label>
-              <Input
-                id="address"
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-              />
-            </div>
           </div>
 
           <DialogFooter>

@@ -27,10 +27,9 @@ export async function GET(request: NextRequest) {
 
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams
-    const includeInactive = searchParams.get('includeInactive') === 'true'
 
     // Get branches
-    const branches = await branchService.getAllBranches(includeInactive)
+    const branches = await branchService.getAllBranches()
 
     return NextResponse.json({
       success: true,

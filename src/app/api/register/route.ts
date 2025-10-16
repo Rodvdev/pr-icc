@@ -64,10 +64,8 @@ export async function POST(request: NextRequest) {
         email,
         phone,
         dni,
-        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
-        address,
-        password: hashedPassword,
-        status: 'PENDING', // Pending admin approval
+        hashedPassword,
+        status: 'ACTIVE', // Default to active for new registrations
       }
     })
 
@@ -75,15 +73,6 @@ export async function POST(request: NextRequest) {
     await prisma.registrationRequest.create({
       data: {
         clientId: client.id,
-        requestData: {
-          name,
-          email,
-          phone,
-          dni,
-          dateOfBirth,
-          address,
-          submittedAt: new Date().toISOString()
-        },
         status: 'PENDING'
       }
     })
@@ -100,13 +89,10 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Remove password from response
-    const { password: _clientPassword, ...clientData } = client
-
     return NextResponse.json({
       success: true,
       message: 'Registro exitoso. Tu solicitud será revisada por un administrador.',
-      data: clientData
+      data: client
     }, { status: 201 })
   } catch (error) {
     console.error('[API] POST /api/register error:', error)

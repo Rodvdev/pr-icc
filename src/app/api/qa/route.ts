@@ -38,8 +38,6 @@ export async function GET(request: NextRequest) {
     // Search QA pairs
     const result = await faqService.searchQAPairs({
       query,
-      category,
-      tags,
       isActive,
       limit,
       offset
@@ -92,9 +90,7 @@ export async function POST(request: NextRequest) {
     const qaPair = await faqService.createQAPair(
       {
         question,
-        answer,
-        category,
-        tags: tags || []
+        answer
       },
       session.user.id
     )

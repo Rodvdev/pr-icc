@@ -111,6 +111,32 @@ export default function SignInPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Credenciales de prueba */}
+        <Card className="border-blue-200 bg-blue-50">
+          <CardContent className="pt-6">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 text-blue-900">
+                <AlertCircle className="h-4 w-4" />
+                <h3 className="font-semibold text-sm">Credenciales de Prueba</h3>
+              </div>
+              
+              <div className="space-y-2 text-xs">
+                <div className="bg-white/60 rounded p-3 space-y-1">
+                  <p className="font-semibold text-blue-900">👤 Administrador:</p>
+                  <p className="font-mono text-gray-700">Email: admin@banking-agent.com</p>
+                  <p className="font-mono text-gray-700">Contraseña: admin123</p>
+                </div>
+                
+                <div className="bg-white/60 rounded p-3 space-y-1">
+                  <p className="font-semibold text-blue-900">👥 Agentes:</p>
+                  <p className="font-mono text-gray-700">agent1@banking-agent.com / admin123</p>
+                  <p className="font-mono text-gray-700">agent2@banking-agent.com / admin123</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   )

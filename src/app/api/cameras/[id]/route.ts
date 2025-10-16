@@ -100,9 +100,6 @@ export async function PATCH(
       id,
       {
         name,
-        ipAddress,
-        model,
-        location,
         streamUrl,
         status,
         branchId,

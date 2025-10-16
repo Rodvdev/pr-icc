@@ -41,12 +41,9 @@ export async function POST(
     // Unblock client
     const client = await clientService.unblockClient(id, session.user.id)
 
-    // Remove password from response
-    const { password: _password, ...clientData } = client
-
     return NextResponse.json({
       success: true,
-      data: clientData,
+      data: client,
       message: 'Client unblocked successfully'
     })
   } catch (error) {

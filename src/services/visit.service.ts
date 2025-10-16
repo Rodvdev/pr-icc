@@ -7,6 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
+import { VisitStatus as PrismaVisitStatus } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -24,7 +25,7 @@ export interface Visit {
   branchId: string
   moduleId: string | null
   detectionId: string | null
-  status: VisitStatus
+  status: PrismaVisitStatus
   purpose: string | null
   startedAt: Date
   assignedAt: Date | null
@@ -72,7 +73,7 @@ export class VisitService {
         branchId: data.branchId,
         moduleId: data.moduleId,
         purpose: data.purpose || 'Consulta general',
-        status: VisitStatus.WAITING
+        status: PrismaVisitStatus.WAITING
       },
       include: {
         client: true,
@@ -253,7 +254,7 @@ export class VisitService {
     return prisma.visit.findMany({
       where: {
         branchId,
-        status: VisitStatus.WAITING
+        status: PrismaVisitStatus.WAITING
       },
       include: {
         client: {
@@ -274,7 +275,7 @@ export class VisitService {
    */
   async updateVisitStatus(
     visitId: string,
-    status: VisitStatus,
+    status: PrismaVisitStatus,
     actorUserId?: string
   ): Promise<Visit> {
     const updateData: Record<string, unknown> = { status }
@@ -327,7 +328,7 @@ export class VisitService {
     const visit = await prisma.visit.update({
       where: { id: visitId },
       data: {
-        status: VisitStatus.COMPLETED,
+        status: PrismaVisitStatus.COMPLETED,
         finishedAt: new Date()
       },
       include: {
@@ -360,7 +361,7 @@ export class VisitService {
     const visit = await prisma.visit.update({
       where: { id: visitId },
       data: {
-        status: VisitStatus.ABANDONED,
+        status: PrismaVisitStatus.ABANDONED,
         finishedAt: new Date()
       },
       include: {

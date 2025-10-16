@@ -180,6 +180,40 @@ export default function KioskLoginPage() {
             </div>
           </div>
         </Card>
+
+        {/* Credenciales de prueba */}
+        <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 text-green-900">
+              <AlertCircle className="w-5 h-5" />
+              <h3 className="font-semibold text-base">🔑 Credenciales de Prueba</h3>
+            </div>
+            
+            <div className="space-y-3 text-sm">
+              <div className="bg-white/80 rounded-lg p-4 space-y-2 border border-green-100">
+                <p className="font-semibold text-green-900">Cliente 1 - Sharon Aiquipa:</p>
+                <p className="font-mono text-lg text-gray-800">DNI: <span className="font-bold text-green-700">72134682</span></p>
+                <p className="font-mono text-gray-700">Contraseña: client123</p>
+              </div>
+              
+              <div className="bg-white/80 rounded-lg p-4 space-y-2 border border-green-100">
+                <p className="font-semibold text-green-900">Cliente 2 - Carlos Izaguirre:</p>
+                <p className="font-mono text-lg text-gray-800">DNI: <span className="font-bold text-green-700">12345678</span></p>
+                <p className="font-mono text-gray-700">Contraseña: client123</p>
+              </div>
+
+              <div className="bg-white/80 rounded-lg p-4 space-y-2 border border-green-100">
+                <p className="font-semibold text-green-900">Cliente 3 - Rodrigo Vasquez:</p>
+                <p className="font-mono text-lg text-gray-800">DNI: <span className="font-bold text-green-700">70669690</span></p>
+                <p className="font-mono text-gray-700">Contraseña: client123</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-green-800 italic text-center pt-2">
+              💡 Usa estos datos para probar el sistema
+            </p>
+          </div>
+        </Card>
       </div>
     </div>
   )

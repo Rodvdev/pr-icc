@@ -135,17 +135,17 @@ export default function ClientsPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Activos</CardDescription>
-            <CardTitle className="text-2xl text-green-600">
-              {clients.filter(c => c.status === "ACTIVE").length}
+            <CardDescription>Eliminados</CardDescription>
+            <CardTitle className="text-2xl text-gray-600">
+              {clients.filter(c => c.status === "DELETED").length}
             </CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Pendientes</CardDescription>
-            <CardTitle className="text-2xl text-yellow-600">
-              {clients.filter(c => c.status === "PENDING").length}
+            <CardDescription>Activos</CardDescription>
+            <CardTitle className="text-2xl text-green-600">
+              {clients.filter(c => c.status === "ACTIVE").length}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -256,13 +256,11 @@ export default function ClientsPage() {
                             >
                               Editar
                             </DropdownMenuItem>
-                            {client.status === "PENDING" && (
-                              <DropdownMenuItem
-                                onClick={() => handleAction("activate", client)}
-                              >
-                                Aprobar
-                              </DropdownMenuItem>
-                            )}
+                            <DropdownMenuItem
+                              onClick={() => handleAction("activate", client)}
+                            >
+                              Activar
+                            </DropdownMenuItem>
                             {client.status === "ACTIVE" && (
                               <DropdownMenuItem
                                 onClick={() => handleAction("block", client)}
