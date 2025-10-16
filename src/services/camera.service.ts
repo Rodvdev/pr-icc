@@ -7,7 +7,7 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { CameraStatus as PrismaCameraStatus, Prisma } from '@prisma/client'
+import { Prisma } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -24,7 +24,7 @@ export interface Camera {
   moduleId: string | null
   name: string
   streamUrl: string | null
-  status: PrismaCameraStatus
+  status: 'ONLINE' | 'OFFLINE' | 'ERROR'
   lastHeartbeat: Date | null
   ownerUserId: string | null
   createdAt: Date
@@ -287,8 +287,8 @@ export class CameraService {
     cameraId: string,
     level: string,
     message: string,
-    meta?: Prisma.JsonValue
-  ): Promise<Prisma.CameraLogGetPayload<Record<string, never>>> {
+    meta?: Record<string, unknown>
+  ): Promise<Awaited<ReturnType<typeof prisma.cameraLog.create>>> {
     return prisma.cameraLog.create({
       data: {
         cameraId,
@@ -305,7 +305,7 @@ export class CameraService {
   async getCameraLogs(
     cameraId: string,
     limit = 100
-  ): Promise<Prisma.CameraLogGetPayload<Record<string, never>>[]> {
+  ): Promise<Awaited<ReturnType<typeof prisma.cameraLog.findMany>>> {
     return prisma.cameraLog.findMany({
       where: { cameraId },
       orderBy: { createdAt: 'desc' },

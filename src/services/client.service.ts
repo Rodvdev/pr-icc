@@ -7,7 +7,6 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { ClientStatus as PrismaClientStatus } from '@prisma/client'
 import bcrypt from 'bcryptjs'
 
 // ========== TYPE DEFINITIONS ==========
@@ -25,7 +24,7 @@ export interface Client {
   name: string | null
   email: string | null
   phone: string | null
-  status: PrismaClientStatus
+  status: 'ACTIVE' | 'BLOCKED' | 'DELETED'
   hashedPassword: string | null
   passwordUpdatedAt: Date | null
   locale: string | null

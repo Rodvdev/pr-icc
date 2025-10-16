@@ -308,12 +308,12 @@ export class FAQService {
   async createQAPair(
     data: CreateQAPairData,
     actorUserId: string
-  ): Promise<Prisma.QAPairGetPayload<Record<string, never>>> {
+  ): Promise<Awaited<ReturnType<typeof prisma.qAPair.create>>> {
     const qaPair = await prisma.qAPair.create({
       data: {
         question: data.question,
         answer: data.answer,
-        metadata: data.metadata as Prisma.InputJsonValue || undefined,
+        metadata: data.metadata || undefined,
         isActive: true
       }
     })
@@ -333,7 +333,7 @@ export class FAQService {
   /**
    * Get QA pair by ID
    */
-  async getQAPairById(qaPairId: string): Promise<Prisma.QAPairGetPayload<Record<string, never>> | null> {
+  async getQAPairById(qaPairId: string): Promise<Awaited<ReturnType<typeof prisma.qAPair.findUnique>>> {
     return prisma.qAPair.findUnique({
       where: { id: qaPairId }
     })
@@ -348,7 +348,7 @@ export class FAQService {
     limit?: number
     offset?: number
   }): Promise<{
-    qaPairs: Prisma.QAPairGetPayload<Record<string, never>>[]
+    qaPairs: Awaited<ReturnType<typeof prisma.qAPair.findMany>>
     total: number
   }> {
     const {
@@ -390,7 +390,7 @@ export class FAQService {
     qaPairId: string,
     data: UpdateQAPairData,
     actorUserId: string
-  ): Promise<Prisma.QAPairGetPayload<Record<string, never>>> {
+  ): Promise<Awaited<ReturnType<typeof prisma.qAPair.create>>> {
     const qaPair = await prisma.qAPair.update({
       where: { id: qaPairId },
       data: {
@@ -417,7 +417,7 @@ export class FAQService {
   async deleteQAPair(
     qaPairId: string,
     actorUserId: string
-  ): Promise<Prisma.QAPairGetPayload<Record<string, never>>> {
+  ): Promise<Awaited<ReturnType<typeof prisma.qAPair.create>>> {
     const qaPair = await prisma.qAPair.delete({
       where: { id: qaPairId }
     })
@@ -437,7 +437,7 @@ export class FAQService {
   /**
    * Get all active QA pairs
    */
-  async getActiveQAPairs(): Promise<QAPair[]> {
+  async getActiveQAPairs(): Promise<Awaited<ReturnType<typeof prisma.qAPair.findMany>>> {
     return prisma.qAPair.findMany({
       where: { isActive: true },
       orderBy: { createdAt: 'desc' }
