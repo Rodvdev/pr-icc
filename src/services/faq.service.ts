@@ -7,7 +7,6 @@
 
 import { prisma } from '@/lib/prisma'
 import { audit } from '@/lib/audit'
-import { Prisma } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
