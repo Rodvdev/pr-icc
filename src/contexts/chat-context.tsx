@@ -1,6 +1,6 @@
 "use client"
 
-import { createContext, useContext, useState, useCallback, ReactNode } from "react"
+import { createContext, useContext, useState, useCallback, ReactNode, useMemo } from "react"
 
 export interface ChatMessage {
   id: string
@@ -84,7 +84,10 @@ export function ChatProvider({ children, userType = "client" }: ChatProviderProp
   const [unreadCount, setUnreadCount] = useState(0)
 
   // Get current messages from active conversation
-  const messages = conversations.find(c => c.id === currentConversationId)?.messages || []
+  const messages = useMemo(() => 
+    conversations.find(c => c.id === currentConversationId)?.messages || [], 
+    [conversations, currentConversationId]
+  )
 
   const openChat = useCallback(() => {
     setIsOpen(true)
