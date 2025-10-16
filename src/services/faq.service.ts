@@ -313,7 +313,7 @@ export class FAQService {
       data: {
         question: data.question,
         answer: data.answer,
-        metadata: data.metadata as unknown as Prisma.JsonValue || undefined,
+        metadata: data.metadata as unknown || undefined,
         isActive: true
       }
     })
@@ -395,7 +395,7 @@ export class FAQService {
       where: { id: qaPairId },
       data: {
         ...data,
-        metadata: data.metadata !== undefined ? data.metadata as unknown as Prisma.NullableJsonNullValueInput : undefined
+        metadata: data.metadata !== undefined ? (data.metadata as unknown) as Prisma.InputJsonValue : undefined
       }
     })
 
