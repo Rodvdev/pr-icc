@@ -31,6 +31,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Kiosk protected routes - require client authentication
+  if (pathname.startsWith('/kiosk/welcome')) {
+    if (!token || token.userType !== 'CLIENT') {
+      return NextResponse.redirect(new URL('/kiosk/login', request.url))
+    }
+  }
+
   return NextResponse.next()
 }
 
