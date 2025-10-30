@@ -88,17 +88,19 @@ export default function FacialRecognitionPage() {
       const [profilesRes, detectionsRes, encodingsRes, pythonResults] = await Promise.all([
         fetch('/api/facial-recognition/profiles'),
         fetch('/api/facial-recognition/detections?limit=1000'),
-        fetch('http://localhost:5001/api/admin/encodings').catch(() => null), // API Flask
+        // API Flask deshabilitada temporalmente
+        Promise.resolve(null),
         getFacialResults().catch(() => null) // Si falla la API de Python, continúa
       ])
       
       // Si tenemos encodings de Flask, combinarlos con los perfiles
-      if (encodingsRes?.ok) {
-        const encodingsData = await encodingsRes.json()
-        if (encodingsData.encodings?.length > 0) {
-          console.log(`✅ ${encodingsData.total} usuarios registrados en Flask API`)
-        }
-      }
+      // API Flask deshabilitada temporalmente - este código no se ejecuta
+      // if (encodingsRes?.ok) {
+      //   const encodingsData = await encodingsRes.json()
+      //   if (encodingsData.encodings?.length > 0) {
+      //     console.log(`✅ ${encodingsData.total} usuarios registrados en Flask API`)
+      //   }
+      // }
 
       const profilesData = await profilesRes.json()
       const detectionsData = await detectionsRes.json()

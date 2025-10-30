@@ -77,7 +77,11 @@ export const authOptions: NextAuthOptions = {
               : { dni: credentials.dni! }
           })
 
-          if (!client || client.status !== 'ACTIVE') {
+          if (!client) {
+            return null
+          }
+
+          if (client.status !== 'ACTIVE') {
             return null
           }
 
@@ -101,7 +105,7 @@ export const authOptions: NextAuthOptions = {
             userType: "CLIENT" as const,
           }
         } catch (error) {
-          console.error('Client auth error:', error)
+          console.error('[Auth] Client auth error:', error)
           return null
         }
       }

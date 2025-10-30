@@ -61,24 +61,9 @@ export default function KioskHomePage() {
         }
       }
 
-      // Llamar a la API de detección con la imagen capturada
-      const response = await fetch('http://localhost:5001/api/kiosk/detect', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          cameraId: 'kiosk-001',
-          timestamp: new Date().toISOString(),
-          imageData: imageData
-        })
-      })
-
-      if (response.ok) {
-        const result = await response.json()
-        setDetectionResult(result)
-        setDetectionStatus(result.status)
-      } else {
-        throw new Error('Error en detección')
-      }
+      // API de detección facial deshabilitada temporalmente
+      // TODO: Re-enable when facial recognition service is available
+      throw new Error('Detección facial temporalmente deshabilitada. Por favor, use el registro manual.')
     } catch (error) {
       console.error('Error en detección facial:', error)
       setDetectionStatus('error')
