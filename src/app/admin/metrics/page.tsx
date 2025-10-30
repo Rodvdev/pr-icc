@@ -49,28 +49,27 @@ export default async function MetricsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Preguntas más vistas</CardTitle>
+          <CardTitle>FAQ Statistics</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {(faqStats.topViewed ?? []).length === 0 ? (
-            <div className="text-gray-500 text-sm">Aún sin datos.</div>
-          ) : (
-            (faqStats.topViewed as { title: string; views: number }[]).slice(0, 5).map((f, i) => {
-              const max = Math.max(...(faqStats.topViewed as { views: number }[]).map(x => x.views)) || 1
-              const pct = Math.round((f.views / max) * 100)
-              return (
-                <div key={i} className="space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span className="line-clamp-1 pr-2">{f.title}</span>
-                    <span className="text-gray-500">{f.views.toLocaleString()}</span>
-                  </div>
-                  <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-blue-600" style={{ width: `${pct}%` }} />
-                  </div>
-                </div>
-              )
-            })
-          )}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="text-sm">
+              <span className="text-gray-600">Total FAQs:</span>
+              <span className="font-semibold ml-2">{faqStats.totalFAQs ?? 0}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-gray-600">Published:</span>
+              <span className="font-semibold ml-2">{faqStats.publishedFAQs ?? 0}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-gray-600">Draft:</span>
+              <span className="font-semibold ml-2">{faqStats.draftFAQs ?? 0}</span>
+            </div>
+            <div className="text-sm">
+              <span className="text-gray-600">Archived:</span>
+              <span className="font-semibold ml-2">{faqStats.archivedFAQs ?? 0}</span>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>
