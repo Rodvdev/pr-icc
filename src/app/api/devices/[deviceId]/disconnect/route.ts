@@ -7,10 +7,10 @@ import { deviceIntegrationService } from '@/services/device-integration.service'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: Promise<{ deviceId: string }> }
 ) {
   try {
-    const deviceId = params.deviceId
+    const { deviceId } = await params
     await deviceIntegrationService.disconnectDevice(deviceId)
 
     return NextResponse.json({

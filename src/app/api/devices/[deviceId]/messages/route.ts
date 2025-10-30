@@ -8,10 +8,10 @@ import { randomUUID } from 'crypto'
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: Promise<{ deviceId: string }> }
 ) {
   try {
-    const deviceId = params.deviceId
+    const { deviceId } = await params
     const body = await request.json()
 
     if (!body.type || !body.payload) {

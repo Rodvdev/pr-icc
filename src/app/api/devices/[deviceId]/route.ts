@@ -7,10 +7,10 @@ import { deviceIntegrationService } from '@/services/device-integration.service'
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: Promise<{ deviceId: string }> }
 ) {
   try {
-    const deviceId = params.deviceId
+    const { deviceId } = await params
     const health = deviceIntegrationService.getDeviceHealth(deviceId)
 
     if (!health) {
@@ -39,10 +39,10 @@ export async function GET(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { deviceId: string } }
+  { params }: { params: Promise<{ deviceId: string }> }
 ) {
   try {
-    const deviceId = params.deviceId
+    const { deviceId } = await params
     await deviceIntegrationService.disconnectDevice(deviceId)
 
     return NextResponse.json({
