@@ -59,27 +59,33 @@ export const authOptions: NextAuthOptions = {
       id: "client-credentials",
       name: "Client Credentials",
       credentials: {
-        email: { label: "Email", type: "email" },
+        email: { label: "Email", type: "text" },
+        dni: { label: "DNI", type: "text" },
         password: { label: "Password", type: "password" }
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        if ((!credentials?.email && !credentials?.dni) || !credentials?.password) {
           return null
         }
 
         try {
+          // Find client by email or DNI
           const client = await prisma.client.findUnique({
-            where: {
-              email: credentials.email
-            }
+            where: credentials.email
+              ? { email: credentials.email }
+              : { dni: credentials.dni! }
           })
 
           if (!client || client.status !== 'ACTIVE') {
             return null
           }
 
+          if (!client.hashedPassword) {
+            return null
+          }
+
           // Verify password using bcrypt
-          const isValid = await bcrypt.compare(credentials.password, client.hashedPassword || "")
+          const isValid = await bcrypt.compare(credentials.password, client.hashedPassword)
           
           if (!isValid) {
             return null

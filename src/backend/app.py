@@ -11,6 +11,9 @@ from pathlib import Path
 from datetime import datetime, timedelta
 import os
 import base64
+import re
+from collections import defaultdict
+from functools import wraps
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +33,25 @@ stream_url = os.getenv("STREAM_URL", "0")  # 0 = webcam local, o cambiar por URL
 last_recognitions = []
 current_frame = None
 recognition_thread = None
+
+# Estado global para chatbot
+chat_metrics = {
+    "total_requests": 0,
+    "successful_requests": 0,
+    "failed_requests": 0,
+    "total_latency_ms": 0,
+    "request_times": [],
+    "requests_per_session": defaultdict(int),
+    "error_types": defaultdict(int),
+    "last_reset": datetime.now()
+}
+
+# Rate limiting para chatbot
+chat_rate_limits = defaultdict(list)  # {client_id: [timestamps]}
+RATE_LIMIT_MAX_REQUESTS = 30  # máx 30 requests
+RATE_LIMIT_WINDOW_SECONDS = 60  # por minuto
+MAX_MESSAGE_LENGTH = 2000  # caracteres
+MIN_MESSAGE_LENGTH = 1
 
 # Crear directorios
 os.makedirs(FRAMES_DIR, exist_ok=True)
@@ -1010,6 +1032,395 @@ def admin_delete_client(dni):
         return jsonify({
             "message": "Cliente eliminado correctamente",
             "deletedFiles": deleted
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ============================================
+# CHATBOT ENDPOINT CON INTEGRACIÓN FAQ/QAPAIR
+# ============================================
+
+def get_db_connection():
+    """Obtener conexión a PostgreSQL usando variable de entorno DATABASE_URL"""
+    try:
+        import psycopg2
+        from psycopg2.extras import RealDictCursor
+        database_url = os.getenv("DATABASE_URL")
+        if not database_url:
+            return None
+        conn = psycopg2.connect(database_url)
+        return conn
+    except ImportError:
+        print("⚠️ psycopg2 no está instalado. Instalar con: pip install psycopg2-binary")
+        return None
+    except Exception as e:
+        print(f"❌ Error conectando a BD: {str(e)}")
+        return None
+
+def sanitize_message(message: str) -> str:
+    """Sanitizar mensaje de usuario: remover caracteres peligrosos"""
+    # Remover caracteres de control y limitar longitud
+    sanitized = re.sub(r'[\x00-\x1F\x7F-\x9F]', '', message)
+    sanitized = sanitized[:MAX_MESSAGE_LENGTH]
+    # Remover múltiples espacios
+    sanitized = re.sub(r'\s+', ' ', sanitized).strip()
+    return sanitized
+
+def check_rate_limit(client_id: str):
+    """Verificar rate limiting por cliente. Retorna (puede_proceder, mensaje_error)"""
+    now = time.time()
+    # Limpiar timestamps fuera de la ventana
+    chat_rate_limits[client_id] = [
+        ts for ts in chat_rate_limits[client_id]
+        if now - ts < RATE_LIMIT_WINDOW_SECONDS
+    ]
+    
+    if len(chat_rate_limits[client_id]) >= RATE_LIMIT_MAX_REQUESTS:
+        return False, "Límite de solicitudes excedido. Intenta más tarde."
+    
+    chat_rate_limits[client_id].append(now)
+    return True, ""
+
+def search_faq_context(query: str, limit: int = 3) -> list:
+    """Buscar FAQs relevantes en la base de datos"""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    try:
+        with conn.cursor() as cursor:
+            # Búsqueda simple por palabras clave en título y respuesta
+            search_terms = query.lower().split()[:5]  # Máximo 5 términos
+            conditions = []
+            params = []
+            
+            for term in search_terms:
+                conditions.append("(LOWER(title) LIKE %s OR LOWER(answer) LIKE %s)")
+                params.extend([f"%{term}%", f"%{term}%"])
+            
+            sql = f"""
+                SELECT id, title, answer, tags, status
+                FROM "FAQ"
+                WHERE status = 'PUBLISHED'
+                AND ({' OR '.join(conditions)})
+                ORDER BY 
+                    CASE 
+                        WHEN LOWER(title) LIKE %s THEN 1
+                        ELSE 2
+                    END,
+                    CASE 
+                        WHEN LOWER(answer) LIKE %s THEN 1
+                        ELSE 2
+                    END
+                LIMIT %s
+            """
+            params.extend([f"%{search_terms[0]}%", f"%{search_terms[0]}%", limit])
+            cursor.execute(sql, params)
+            results = cursor.fetchall()
+            
+            faqs = []
+            for row in results:
+                faqs.append({
+                    "id": row[0],
+                    "title": row[1],
+                    "answer": row[2],
+                    "tags": row[3] if row[3] else [],
+                    "status": row[4]
+                })
+            return faqs
+    except Exception as e:
+        print(f"❌ Error buscando FAQ: {str(e)}")
+        return []
+    finally:
+        conn.close()
+
+def search_qa_context(query: str, limit: int = 2) -> list:
+    """Buscar QAPairs relevantes en la base de datos"""
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    try:
+        with conn.cursor() as cursor:
+            search_terms = query.lower().split()[:5]
+            conditions = []
+            params = []
+            
+            for term in search_terms:
+                conditions.append("(LOWER(question) LIKE %s OR LOWER(answer) LIKE %s)")
+                params.extend([f"%{term}%", f"%{term}%"])
+            
+            sql = f"""
+                SELECT id, question, answer, is_active
+                FROM "QAPair"
+                WHERE is_active = true
+                AND ({' OR '.join(conditions)})
+                ORDER BY 
+                    CASE 
+                        WHEN LOWER(question) LIKE %s THEN 1
+                        ELSE 2
+                    END
+                LIMIT %s
+            """
+            params.extend([f"%{search_terms[0]}%", limit])
+            cursor.execute(sql, params)
+            results = cursor.fetchall()
+            
+            qas = []
+            for row in results:
+                qas.append({
+                    "id": row[0],
+                    "question": row[1],
+                    "answer": row[2],
+                    "isActive": row[3]
+                })
+            return qas
+    except Exception as e:
+        print(f"❌ Error buscando QAPair: {str(e)}")
+        return []
+    finally:
+        conn.close()
+
+def generate_bot_response(user_message: str, faq_context: list, qa_context: list) -> dict:
+    """Generar respuesta del bot basada en contexto de FAQ/QAPair"""
+    # Si hay FAQs o QAs relevantes, usar la primera respuesta más relevante
+    if faq_context:
+        best_match = faq_context[0]
+        return {
+            "message": best_match["answer"],
+            "source": "FAQ",
+            "sourceId": best_match["id"],
+            "confidence": "high",
+            "relatedTopics": best_match.get("tags", [])
+        }
+    
+    if qa_context:
+        best_match = qa_context[0]
+        return {
+            "message": best_match["answer"],
+            "source": "QAPair",
+            "sourceId": best_match["id"],
+            "confidence": "medium",
+            "relatedTopics": []
+        }
+    
+    # Respuesta genérica si no hay contexto
+    return {
+        "message": "No encontré información específica sobre tu consulta. Por favor, contacta con un agente para más detalles.",
+        "source": "generic",
+        "sourceId": None,
+        "confidence": "low",
+        "relatedTopics": []
+    }
+
+def record_metrics(latency_ms: float, success: bool, error_type: str = None):
+    """Registrar métricas de la solicitud"""
+    chat_metrics["total_requests"] += 1
+    chat_metrics["total_latency_ms"] += latency_ms
+    chat_metrics["request_times"].append(latency_ms)
+    
+    # Mantener solo últimos 1000 tiempos
+    if len(chat_metrics["request_times"]) > 1000:
+        chat_metrics["request_times"] = chat_metrics["request_times"][-1000:]
+    
+    if success:
+        chat_metrics["successful_requests"] += 1
+    else:
+        chat_metrics["failed_requests"] += 1
+        if error_type:
+            chat_metrics["error_types"][error_type] += 1
+
+@app.route('/api/chat', methods=['POST'])
+def chat():
+    """
+    Endpoint de chatbot con integración de FAQ/QAPair y guardas de seguridad.
+    Evidencia de evaluación: métricas de latencia y tasa de éxito.
+    """
+    start_time = time.time()
+    error_type = None
+    
+    try:
+        # 1. Validación de entrada
+        data = request.get_json(silent=True) or {}
+        message = data.get('message', '').strip()
+        session_id = data.get('sessionId')
+        client_id = data.get('clientId') or session_id or 'anonymous'
+        
+        # Validar mensaje
+        if not message:
+            error_type = "empty_message"
+            record_metrics((time.time() - start_time) * 1000, False, error_type)
+            return jsonify({"error": "El mensaje no puede estar vacío"}), 400
+        
+        if len(message) < MIN_MESSAGE_LENGTH:
+            error_type = "message_too_short"
+            record_metrics((time.time() - start_time) * 1000, False, error_type)
+            return jsonify({"error": f"El mensaje debe tener al menos {MIN_MESSAGE_LENGTH} caracteres"}), 400
+        
+        if len(message) > MAX_MESSAGE_LENGTH:
+            error_type = "message_too_long"
+            record_metrics((time.time() - start_time) * 1000, False, error_type)
+            return jsonify({"error": f"El mensaje no puede exceder {MAX_MESSAGE_LENGTH} caracteres"}), 400
+        
+        # 2. Sanitización
+        sanitized_message = sanitize_message(message)
+        if not sanitized_message:
+            error_type = "sanitization_failed"
+            record_metrics((time.time() - start_time) * 1000, False, error_type)
+            return jsonify({"error": "El mensaje contiene caracteres inválidos"}), 400
+        
+        # 3. Rate limiting
+        can_proceed, rate_limit_msg = check_rate_limit(client_id)
+        if not can_proceed:
+            error_type = "rate_limit_exceeded"
+            record_metrics((time.time() - start_time) * 1000, False, error_type)
+            return jsonify({"error": rate_limit_msg}), 429
+        
+        # 4. Búsqueda de contexto (FAQ y QAPair)
+        faq_context = search_faq_context(sanitized_message, limit=3)
+        qa_context = search_qa_context(sanitized_message, limit=2)
+        
+        # 5. Generar respuesta
+        bot_response = generate_bot_response(sanitized_message, faq_context, qa_context)
+        
+        # 6. Registrar métricas de éxito
+        latency_ms = (time.time() - start_time) * 1000
+        record_metrics(latency_ms, True)
+        chat_metrics["requests_per_session"][session_id or client_id] += 1
+        
+        # 7. Guardar mensaje en BD (si hay conexión)
+        conn = get_db_connection()
+        if conn and session_id:
+            try:
+                with conn.cursor() as cursor:
+                    # Verificar si existe la sesión
+                    cursor.execute('SELECT id FROM "ChatSession" WHERE id = %s', (session_id,))
+                    if not cursor.fetchone():
+                        # Crear sesión si no existe
+                        cursor.execute(
+                            'INSERT INTO "ChatSession" (id, client_id, started_at) VALUES (%s, %s, %s)',
+                            (session_id, client_id if client_id != 'anonymous' else None, datetime.now())
+                        )
+                    
+                    # Guardar mensaje del usuario
+                    cursor.execute(
+                        'INSERT INTO "ChatMessage" (id, session_id, actor, content, created_at) VALUES (%s, %s, %s, %s, %s)',
+                        (f"msg_{int(time.time() * 1000)}", session_id, 'CLIENT', sanitized_message, datetime.now())
+                    )
+                    
+                    # Guardar respuesta del bot
+                    cursor.execute(
+                        'INSERT INTO "ChatMessage" (id, session_id, actor, content, metadata, created_at) VALUES (%s, %s, %s, %s, %s, %s)',
+                        (
+                            f"msg_{int(time.time() * 1000) + 1}",
+                            session_id,
+                            'BOT',
+                            bot_response["message"],
+                            json.dumps({
+                                "source": bot_response["source"],
+                                "sourceId": bot_response["sourceId"],
+                                "confidence": bot_response["confidence"]
+                            }),
+                            datetime.now()
+                        )
+                    )
+                    conn.commit()
+            except Exception as e:
+                print(f"⚠️ Error guardando mensaje en BD: {str(e)}")
+                conn.rollback()
+            finally:
+                conn.close()
+        
+        return jsonify({
+            "response": bot_response["message"],
+            "metadata": {
+                "source": bot_response["source"],
+                "sourceId": bot_response["sourceId"],
+                "confidence": bot_response["confidence"],
+                "relatedTopics": bot_response["relatedTopics"]
+            },
+            "metrics": {
+                "latencyMs": round(latency_ms, 2)
+            }
+        })
+        
+    except Exception as e:
+        error_type = "internal_error"
+        latency_ms = (time.time() - start_time) * 1000
+        record_metrics(latency_ms, False, error_type)
+        print(f"❌ Error en /api/chat: {str(e)}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
+@app.route('/api/chat/metrics', methods=['GET'])
+def chat_metrics_endpoint():
+    """Obtener métricas del chatbot"""
+    try:
+        total = chat_metrics["total_requests"]
+        successful = chat_metrics["successful_requests"]
+        failed = chat_metrics["failed_requests"]
+        
+        avg_latency = 0
+        if chat_metrics["request_times"]:
+            avg_latency = sum(chat_metrics["request_times"]) / len(chat_metrics["request_times"])
+        
+        success_rate = (successful / total * 100) if total > 0 else 0
+        
+        # Calcular percentiles de latencia
+        latencies = sorted(chat_metrics["request_times"])
+        p50 = latencies[len(latencies) // 2] if latencies else 0
+        p95 = latencies[int(len(latencies) * 0.95)] if latencies else 0
+        p99 = latencies[int(len(latencies) * 0.99)] if latencies else 0
+        
+        return jsonify({
+            "totalRequests": total,
+            "successfulRequests": successful,
+            "failedRequests": failed,
+            "successRate": round(success_rate, 2),
+            "averageLatencyMs": round(avg_latency, 2),
+            "latencyP50": round(p50, 2),
+            "latencyP95": round(p95, 2),
+            "latencyP99": round(p99, 2),
+            "errorTypes": dict(chat_metrics["error_types"]),
+            "requestsPerSession": dict(chat_metrics["requests_per_session"]),
+            "lastReset": chat_metrics["last_reset"].isoformat()
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/chat/session', methods=['POST'])
+def create_chat_session():
+    """Crear nueva sesión de chat"""
+    try:
+        data = request.get_json(silent=True) or {}
+        client_id = data.get('clientId')
+        temp_visitor_id = data.get('tempVisitorId')
+        
+        if not client_id and not temp_visitor_id:
+            return jsonify({"error": "clientId o tempVisitorId requerido"}), 400
+        
+        session_id = f"session_{int(time.time() * 1000)}"
+        
+        # Guardar en BD si hay conexión
+        conn = get_db_connection()
+        if conn:
+            try:
+                with conn.cursor() as cursor:
+                    cursor.execute(
+                        'INSERT INTO "ChatSession" (id, client_id, temp_visitor_id, started_at) VALUES (%s, %s, %s, %s)',
+                        (session_id, client_id, temp_visitor_id, datetime.now())
+                    )
+                    conn.commit()
+            except Exception as e:
+                print(f"⚠️ Error creando sesión en BD: {str(e)}")
+                conn.rollback()
+            finally:
+                conn.close()
+        
+        return jsonify({
+            "sessionId": session_id,
+            "clientId": client_id,
+            "tempVisitorId": temp_visitor_id,
+            "startedAt": datetime.now().isoformat()
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500

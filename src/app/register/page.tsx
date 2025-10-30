@@ -7,10 +7,10 @@ import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { Progress } from "@/components/ui/progress"
-import { CheckCircle2, User, Lock, FileText, Camera } from "lucide-react"
+import { CheckCircle2, User, Lock, AlertCircle, Eye, EyeOff, Mail, Phone, CreditCard } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-type Step = 1 | 2 | 3 | 4
+type Step = 1 | 2
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -18,66 +18,171 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [success, setSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   // Form data
   const [formData, setFormData] = useState({
-    // Step 1: Personal Info
     name: "",
     email: "",
     phone: "",
     dni: "",
-    dateOfBirth: "",
-    address: "",
-    
-    // Step 2: Account
     password: "",
     confirmPassword: "",
-    
-    // Step 3: Documents (for future implementation)
-    documentFront: null as File | null,
-    documentBack: null as File | null,
-    
-    // Step 4: Photo (for future implementation)
-    photo: null as File | null,
   })
 
-  const progress = (currentStep / 4) * 100
+  // Field errors
+  const [fieldErrors, setFieldErrors] = useState<{
+    name?: string
+    email?: string
+    phone?: string
+    dni?: string
+    password?: string
+    confirmPassword?: string
+  }>({})
+
+  const progress = (currentStep / 2) * 100
+
+  // Validation functions
+  const validateName = (name: string): boolean => {
+    if (!name.trim()) {
+      setFieldErrors(prev => ({ ...prev, name: "El nombre es requerido" }))
+      return false
+    }
+    if (name.trim().length < 2) {
+      setFieldErrors(prev => ({ ...prev, name: "El nombre debe tener al menos 2 caracteres" }))
+      return false
+    }
+    setFieldErrors(prev => ({ ...prev, name: undefined }))
+    return true
+  }
+
+  const validateEmail = (email: string): boolean => {
+    if (!email.trim()) {
+      setFieldErrors(prev => ({ ...prev, email: "El email es requerido" }))
+      return false
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      setFieldErrors(prev => ({ ...prev, email: "Formato de email inválido" }))
+      return false
+    }
+    setFieldErrors(prev => ({ ...prev, email: undefined }))
+    return true
+  }
+
+  const validatePhone = (phone: string): boolean => {
+    if (!phone.trim()) {
+      setFieldErrors(prev => ({ ...prev, phone: "El teléfono es requerido" }))
+      return false
+    }
+    const phoneRegex = /^(\+51\s?)?9\d{8}$/
+    const cleanedPhone = phone.replace(/\s/g, '')
+    if (!phoneRegex.test(cleanedPhone)) {
+      setFieldErrors(prev => ({ ...prev, phone: "Formato de teléfono inválido (debe ser un número peruano de 9 dígitos)" }))
+      return false
+    }
+    setFieldErrors(prev => ({ ...prev, phone: undefined }))
+    return true
+  }
+
+  const validateDNI = (dni: string): boolean => {
+    if (!dni.trim()) {
+      setFieldErrors(prev => ({ ...prev, dni: "El DNI es requerido" }))
+      return false
+    }
+    const dniRegex = /^\d{8}$/
+    if (!dniRegex.test(dni)) {
+      setFieldErrors(prev => ({ ...prev, dni: "El DNI debe tener 8 dígitos" }))
+      return false
+    }
+    setFieldErrors(prev => ({ ...prev, dni: undefined }))
+    return true
+  }
+
+  const validatePassword = (password: string): boolean => {
+    if (!password.trim()) {
+      setFieldErrors(prev => ({ ...prev, password: "La contraseña es requerida" }))
+      return false
+    }
+    if (password.length < 8) {
+      setFieldErrors(prev => ({ ...prev, password: "La contraseña debe tener al menos 8 caracteres" }))
+      return false
+    }
+    if (!/[A-Z]/.test(password)) {
+      setFieldErrors(prev => ({ ...prev, password: "La contraseña debe contener al menos una letra mayúscula" }))
+      return false
+    }
+    if (!/[a-z]/.test(password)) {
+      setFieldErrors(prev => ({ ...prev, password: "La contraseña debe contener al menos una letra minúscula" }))
+      return false
+    }
+    if (!/\d/.test(password)) {
+      setFieldErrors(prev => ({ ...prev, password: "La contraseña debe contener al menos un número" }))
+      return false
+    }
+    setFieldErrors(prev => ({ ...prev, password: undefined }))
+    return true
+  }
+
+  const validateConfirmPassword = (confirmPassword: string, password: string): boolean => {
+    if (!confirmPassword.trim()) {
+      setFieldErrors(prev => ({ ...prev, confirmPassword: "Confirma tu contraseña" }))
+      return false
+    }
+    if (confirmPassword !== password) {
+      setFieldErrors(prev => ({ ...prev, confirmPassword: "Las contraseñas no coinciden" }))
+      return false
+    }
+    setFieldErrors(prev => ({ ...prev, confirmPassword: undefined }))
+    return true
+  }
 
   const nextStep = () => {
-    if (currentStep < 4) {
-      setCurrentStep((currentStep + 1) as Step)
+    // Validate step 1 fields
+    const isNameValid = validateName(formData.name)
+    const isEmailValid = validateEmail(formData.email)
+    const isPhoneValid = validatePhone(formData.phone)
+    const isDniValid = validateDNI(formData.dni)
+
+    if (isNameValid && isEmailValid && isPhoneValid && isDniValid) {
+      setCurrentStep(2)
     }
   }
 
   const prevStep = () => {
     if (currentStep > 1) {
-      setCurrentStep((currentStep - 1) as Step)
+      setCurrentStep(1)
     }
   }
 
   const handleSubmit = async () => {
     setError("")
+    setFieldErrors({})
+
+    // Validate all fields
+    const isNameValid = validateName(formData.name)
+    const isEmailValid = validateEmail(formData.email)
+    const isPhoneValid = validatePhone(formData.phone)
+    const isDniValid = validateDNI(formData.dni)
+    const isPasswordValid = validatePassword(formData.password)
+    const isConfirmPasswordValid = validateConfirmPassword(formData.confirmPassword, formData.password)
+
+    if (!isNameValid || !isEmailValid || !isPhoneValid || !isDniValid || !isPasswordValid || !isConfirmPasswordValid) {
+      return
+    }
+
     setLoading(true)
 
     try {
-      // Validate passwords match
-      if (formData.password !== formData.confirmPassword) {
-        setError("Las contraseñas no coinciden")
-        setLoading(false)
-        return
-      }
-
-      // Create registration request
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          phone: formData.phone,
-          dni: formData.dni,
-          dateOfBirth: formData.dateOfBirth,
-          address: formData.address,
+          name: formData.name.trim(),
+          email: formData.email.trim(),
+          phone: formData.phone.trim(),
+          dni: formData.dni.trim(),
           password: formData.password,
         }),
       })
@@ -87,10 +192,24 @@ export default function RegisterPage() {
       if (response.ok) {
         setSuccess(true)
       } else {
-        setError(data.error || "Error al registrar. Por favor intente nuevamente.")
+        // Handle API errors
+        if (data.error) {
+          if (Array.isArray(data.error)) {
+            setError(data.error.join(", "))
+          } else if (typeof data.error === 'string') {
+            setError(data.error)
+          } else if (data.details && Array.isArray(data.details)) {
+            setError(data.details.join(", "))
+          } else {
+            setError(data.error || "Error al registrar. Por favor intente nuevamente.")
+          }
+        } else {
+          setError("Error al registrar. Por favor intente nuevamente.")
+        }
       }
-    } catch {
-      setError("Error de conexión. Por favor intente nuevamente.")
+    } catch (err) {
+      console.error("Registration error:", err)
+      setError("Error de conexión. Por favor verifica tu conexión e intenta de nuevo.")
     } finally {
       setLoading(false)
     }
@@ -99,49 +218,33 @@ export default function RegisterPage() {
   if (success) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <Card className="max-w-md w-full">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
-              <CheckCircle2 className="h-10 w-10 text-green-600" />
-            </div>
-            <CardTitle className="text-2xl">¡Registro Exitoso!</CardTitle>
-            <CardDescription>
-              Tu solicitud ha sido enviada
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Alert>
-              <AlertDescription>
-                Tu registro está pendiente de aprobación. Recibirás un correo electrónico 
-                cuando tu cuenta sea activada. Este proceso puede tomar 24-48 horas.
-              </AlertDescription>
-            </Alert>
-            <Button
-              onClick={() => router.push("/client/login")}
-              className="w-full"
-            >
-              Ir a Iniciar Sesión
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Credenciales de prueba */}
-        <Card className="max-w-md w-full mt-4 border-green-200 bg-green-50">
-          <CardContent className="pt-6">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-green-900 mb-3">
+        <div className="max-w-md w-full space-y-4">
+          <Card>
+            <CardHeader className="text-center">
+              <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-100 flex items-center justify-center">
+                <CheckCircle2 className="h-10 w-10 text-green-600" />
+              </div>
+              <CardTitle className="text-2xl">¡Registro Exitoso!</CardTitle>
+              <CardDescription>
+                Tu cuenta ha sido creada exitosamente
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Alert>
                 <CheckCircle2 className="h-4 w-4" />
-                <h3 className="font-semibold text-sm">💡 ¿Quieres probar el sistema ahora?</h3>
-              </div>
-              
-              <div className="text-xs bg-white/60 rounded p-3 space-y-1">
-                <p className="text-green-900 font-medium mb-2">Usa estas cuentas de prueba activas:</p>
-                <p className="font-mono text-gray-700">sharon.aiquipa@utec.edu.pe / client123</p>
-                <p className="font-mono text-gray-700">carlos.izaguirre@utec.edu.pe / client123</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                <AlertDescription>
+                  Ya puedes iniciar sesión con tus credenciales. Tu cuenta está activa y lista para usar.
+                </AlertDescription>
+              </Alert>
+              <Button
+                onClick={() => router.push("/client/login")}
+                className="w-full"
+              >
+                Ir a Iniciar Sesión
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }
@@ -156,13 +259,14 @@ export default function RegisterPage() {
           </CardDescription>
           <Progress value={progress} className="mt-4" />
           <p className="text-sm text-gray-500 mt-2">
-            Paso {currentStep} de 4
+            Paso {currentStep} de 2
           </p>
         </CardHeader>
 
         <CardContent>
           {error && (
             <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
@@ -177,83 +281,103 @@ export default function RegisterPage() {
 
               <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Nombre Completo *</Label>
+                  <Label htmlFor="name" className="flex items-center gap-2">
+                    <User className="h-4 w-4 text-gray-400" />
+                    Nombre Completo *
+                  </Label>
                   <Input
                     id="name"
                     value={formData.name}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormData({ ...formData, name: e.target.value })
-                    }
+                      setFieldErrors(prev => ({ ...prev, name: undefined }))
+                    }}
+                    onBlur={() => validateName(formData.name)}
                     placeholder="Juan Pérez García"
                     required
+                    className={fieldErrors.name ? "border-red-500" : ""}
+                    aria-invalid={!!fieldErrors.name}
                   />
+                  {fieldErrors.name && (
+                    <p className="text-sm text-red-600">{fieldErrors.name}</p>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
-                    <Label htmlFor="dni">DNI *</Label>
+                    <Label htmlFor="dni" className="flex items-center gap-2">
+                      <CreditCard className="h-4 w-4 text-gray-400" />
+                      DNI *
+                    </Label>
                     <Input
                       id="dni"
                       value={formData.dni}
-                      onChange={(e) =>
-                        setFormData({ ...formData, dni: e.target.value })
-                      }
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '')
+                        setFormData({ ...formData, dni: value })
+                        setFieldErrors(prev => ({ ...prev, dni: undefined }))
+                      }}
+                      onBlur={() => validateDNI(formData.dni)}
                       placeholder="12345678"
                       maxLength={8}
                       required
+                      className={fieldErrors.dni ? "border-red-500" : ""}
+                      aria-invalid={!!fieldErrors.dni}
                     />
+                    {fieldErrors.dni && (
+                      <p className="text-sm text-red-600">{fieldErrors.dni}</p>
+                    )}
                   </div>
 
                   <div className="grid gap-2">
-                    <Label htmlFor="dateOfBirth">Fecha de Nacimiento</Label>
+                    <Label htmlFor="email" className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-gray-400" />
+                      Correo Electrónico *
+                    </Label>
                     <Input
-                      id="dateOfBirth"
-                      type="date"
-                      value={formData.dateOfBirth}
-                      onChange={(e) =>
-                        setFormData({ ...formData, dateOfBirth: e.target.value })
-                      }
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => {
+                        setFormData({ ...formData, email: e.target.value })
+                        setFieldErrors(prev => ({ ...prev, email: undefined }))
+                      }}
+                      onBlur={() => validateEmail(formData.email)}
+                      placeholder="juan.perez@email.com"
+                      required
+                      className={fieldErrors.email ? "border-red-500" : ""}
+                      aria-invalid={!!fieldErrors.email}
                     />
+                    {fieldErrors.email && (
+                      <p className="text-sm text-red-600">{fieldErrors.email}</p>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid gap-2">
-                  <Label htmlFor="email">Correo Electrónico *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) =>
-                      setFormData({ ...formData, email: e.target.value })
-                    }
-                    placeholder="juan.perez@email.com"
-                    required
-                  />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="phone">Teléfono *</Label>
+                  <Label htmlFor="phone" className="flex items-center gap-2">
+                    <Phone className="h-4 w-4 text-gray-400" />
+                    Teléfono *
+                  </Label>
                   <Input
                     id="phone"
                     value={formData.phone}
-                    onChange={(e) =>
+                    onChange={(e) => {
                       setFormData({ ...formData, phone: e.target.value })
-                    }
+                      setFieldErrors(prev => ({ ...prev, phone: undefined }))
+                    }}
+                    onBlur={() => validatePhone(formData.phone)}
                     placeholder="+51 999 888 777"
                     required
+                    className={fieldErrors.phone ? "border-red-500" : ""}
+                    aria-invalid={!!fieldErrors.phone}
                   />
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="address">Dirección</Label>
-                  <Input
-                    id="address"
-                    value={formData.address}
-                    onChange={(e) =>
-                      setFormData({ ...formData, address: e.target.value })
-                    }
-                    placeholder="Av. Principal 123, Lima"
-                  />
+                  {fieldErrors.phone && (
+                    <p className="text-sm text-red-600">{fieldErrors.phone}</p>
+                  )}
+                  <p className="text-xs text-gray-500">
+                    Formato: +51 seguido de 9 dígitos (ej: +51 987654321)
+                  </p>
                 </div>
               </div>
             </div>
@@ -269,91 +393,75 @@ export default function RegisterPage() {
 
               <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="password">Contraseña *</Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={(e) =>
-                      setFormData({ ...formData, password: e.target.value })
-                    }
-                    placeholder="Mínimo 8 caracteres"
-                    required
-                  />
+                  <Label htmlFor="password" className="flex items-center gap-2">
+                    <Lock className="h-4 w-4 text-gray-400" />
+                    Contraseña *
+                  </Label>
+                  <div className="relative">
+                    <Input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      value={formData.password}
+                      onChange={(e) => {
+                        setFormData({ ...formData, password: e.target.value })
+                        setFieldErrors(prev => ({ ...prev, password: undefined }))
+                        if (formData.confirmPassword) {
+                          validateConfirmPassword(formData.confirmPassword, e.target.value)
+                        }
+                      }}
+                      onBlur={() => validatePassword(formData.password)}
+                      placeholder="Mínimo 8 caracteres"
+                      required
+                      className={fieldErrors.password ? "border-red-500 pr-10" : "pr-10"}
+                      aria-invalid={!!fieldErrors.password}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      tabIndex={-1}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.password && (
+                    <p className="text-sm text-red-600">{fieldErrors.password}</p>
+                  )}
                   <p className="text-xs text-gray-500">
-                    Usa al menos 8 caracteres con letras y números
+                    Debe tener al menos 8 caracteres, una mayúscula, una minúscula y un número
                   </p>
                 </div>
 
                 <div className="grid gap-2">
                   <Label htmlFor="confirmPassword">Confirmar Contraseña *</Label>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) =>
-                      setFormData({ ...formData, confirmPassword: e.target.value })
-                    }
-                    placeholder="Repite tu contraseña"
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      id="confirmPassword"
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={formData.confirmPassword}
+                      onChange={(e) => {
+                        setFormData({ ...formData, confirmPassword: e.target.value })
+                        setFieldErrors(prev => ({ ...prev, confirmPassword: undefined }))
+                      }}
+                      onBlur={() => validateConfirmPassword(formData.confirmPassword, formData.password)}
+                      placeholder="Repite tu contraseña"
+                      required
+                      className={fieldErrors.confirmPassword ? "border-red-500 pr-10" : "pr-10"}
+                      aria-invalid={!!fieldErrors.confirmPassword}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      tabIndex={-1}
+                    >
+                      {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.confirmPassword && (
+                    <p className="text-sm text-red-600">{fieldErrors.confirmPassword}</p>
+                  )}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Documents (Placeholder) */}
-          {currentStep === 3 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <FileText className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-lg">Documentos (Opcional)</h3>
-              </div>
-
-              <Alert>
-                <AlertDescription>
-                  La carga de documentos estará disponible próximamente. 
-                  Puedes continuar con el registro y enviar tus documentos más tarde.
-                </AlertDescription>
-              </Alert>
-            </div>
-          )}
-
-          {/* Step 4: Photo (Placeholder) */}
-          {currentStep === 4 && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Camera className="h-5 w-5 text-blue-600" />
-                <h3 className="font-semibold text-lg">Fotografía (Opcional)</h3>
-              </div>
-
-              <Alert>
-                <AlertDescription>
-                  La captura de fotografía estará disponible próximamente.
-                  Puedes completar el registro sin foto y agregarla más tarde.
-                </AlertDescription>
-              </Alert>
-
-              <div className="bg-blue-50 p-4 rounded-lg">
-                <h4 className="font-medium mb-2">Resumen de tu registro:</h4>
-                <dl className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-gray-600">Nombre:</dt>
-                    <dd className="font-medium">{formData.name}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-600">DNI:</dt>
-                    <dd className="font-medium">{formData.dni}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-600">Email:</dt>
-                    <dd className="font-medium">{formData.email}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-600">Teléfono:</dt>
-                    <dd className="font-medium">{formData.phone}</dd>
-                  </div>
-                </dl>
               </div>
             </div>
           )}
@@ -368,13 +476,11 @@ export default function RegisterPage() {
               Anterior
             </Button>
 
-            {currentStep < 4 ? (
+            {currentStep < 2 ? (
               <Button
                 onClick={nextStep}
                 disabled={
-                  (currentStep === 1 &&
-                    (!formData.name || !formData.email || !formData.dni || !formData.phone)) ||
-                  (currentStep === 2 && (!formData.password || !formData.confirmPassword))
+                  !formData.name || !formData.email || !formData.dni || !formData.phone
                 }
               >
                 Siguiente
@@ -387,36 +493,6 @@ export default function RegisterPage() {
           </div>
         </CardContent>
       </Card>
-
-      {/* Credenciales de prueba */}
-      <Card className="max-w-2xl w-full mt-4 border-indigo-200 bg-indigo-50">
-        <CardContent className="pt-6">
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 text-indigo-900">
-              <User className="h-4 w-4" />
-              <h3 className="font-semibold text-sm">¿Solo quieres probar el sistema?</h3>
-            </div>
-            
-            <div className="space-y-2 text-xs">
-              <p className="text-indigo-800">Usa estas cuentas de prueba ya activadas:</p>
-              <div className="bg-white/60 rounded p-3 space-y-1">
-                <p className="font-mono text-gray-700">📧 sharon.aiquipa@utec.edu.pe / client123</p>
-                <p className="font-mono text-gray-700">📧 carlos.izaguirre@utec.edu.pe / client123</p>
-                <p className="font-mono text-gray-700">📧 rodrigo.vasquezdevel@utec.edu.pe / client123</p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push("/client/login")}
-                className="w-full mt-2"
-              >
-                Ir a Iniciar Sesión
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
-

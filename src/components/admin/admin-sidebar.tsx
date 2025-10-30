@@ -9,7 +9,8 @@ import {
   Settings,
   Menu,
   X,
-  Users
+  Users,
+  Plug
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -29,6 +30,11 @@ const navigation = [
     name: "Clientes",
     href: "/admin/clients",
     icon: Users,
+  },
+  {
+    name: "Dispositivos",
+    href: "/admin/devices",
+    icon: Plug,
   },
   {
     name: "Métricas",

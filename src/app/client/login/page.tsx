@@ -8,37 +8,99 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription } from "@/components/ui/alert"
-import { AlertCircle, Building2, ArrowLeft } from "lucide-react"
+import { AlertCircle, Building2, ArrowLeft, Mail, Lock, Eye, EyeOff } from "lucide-react"
 import Link from "next/link"
 
 export default function ClientLoginPage() {
-  const [email, setEmail] = useState("")
+  const [identifier, setIdentifier] = useState("") // Email or DNI
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [authError, setAuthError] = useState("")
+  const [fieldErrors, setFieldErrors] = useState<{identifier?: string; password?: string}>({})
   const router = useRouter()
+
+  // Validate identifier (email or DNI)
+  const validateIdentifier = (value: string): boolean => {
+    if (!value.trim()) {
+      setFieldErrors(prev => ({ ...prev, identifier: "Email o DNI es requerido" }))
+      return false
+    }
+
+    // Check if it's an email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const isEmail = emailRegex.test(value)
+
+    // Check if it's a DNI (8 digits)
+    const dniRegex = /^\d{8}$/
+    const isDni = dniRegex.test(value)
+
+    if (!isEmail && !isDni) {
+      setFieldErrors(prev => ({ ...prev, identifier: "Debe ser un email válido o DNI de 8 dígitos" }))
+      return false
+    }
+
+    setFieldErrors(prev => ({ ...prev, identifier: undefined }))
+    return true
+  }
+
+  const validatePassword = (value: string): boolean => {
+    if (!value.trim()) {
+      setFieldErrors(prev => ({ ...prev, password: "La contraseña es requerida" }))
+      return false
+    }
+    if (value.length < 8) {
+      setFieldErrors(prev => ({ ...prev, password: "La contraseña debe tener al menos 8 caracteres" }))
+      return false
+    }
+    setFieldErrors(prev => ({ ...prev, password: undefined }))
+    return true
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
     setAuthError("")
+    setFieldErrors({})
+
+    // Validate inputs
+    const isIdentifierValid = validateIdentifier(identifier)
+    const isPasswordValid = validatePassword(password)
+
+    if (!isIdentifierValid || !isPasswordValid) {
+      return
+    }
+
+    setIsLoading(true)
 
     try {
+      // Determine if identifier is email or DNI
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      const isEmail = emailRegex.test(identifier)
+
       const result = await signIn("client-credentials", {
-        email,
+        email: isEmail ? identifier : undefined,
+        dni: !isEmail ? identifier : undefined,
         password,
         redirect: false,
         callbackUrl: "/client",
       })
 
       if (result?.error) {
-        setAuthError("Credenciales inválidas. Verifica tu email y contraseña.")
+        // Handle different error types
+        if (result.error === "CredentialsSignin") {
+          setAuthError("Credenciales inválidas. Verifica tu información e intenta de nuevo.")
+        } else if (result.error.includes("rate")) {
+          setAuthError("Demasiados intentos. Por favor espera unos minutos antes de intentar de nuevo.")
+        } else {
+          setAuthError("Error al iniciar sesión. Por favor intenta de nuevo.")
+        }
       } else if (result?.ok) {
         router.push("/client")
         router.refresh()
       }
-    } catch {
-      setAuthError("Error al iniciar sesión. Por favor intenta de nuevo.")
+    } catch (error) {
+      console.error("Login error:", error)
+      setAuthError("Error de conexión. Por favor verifica tu conexión e intenta de nuevo.")
     } finally {
       setIsLoading(false)
     }
@@ -74,29 +136,73 @@ export default function ClientLoginPage() {
               )}
               
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="identifier" className="flex items-center gap-2">
+                  <Mail className="h-4 w-4 text-gray-400" />
+                  Email o DNI
+                </Label>
                 <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="tu@email.com"
+                  id="identifier"
+                  type="text"
+                  value={identifier}
+                  onChange={(e) => {
+                    setIdentifier(e.target.value)
+                    setFieldErrors(prev => ({ ...prev, identifier: undefined }))
+                  }}
+                  onBlur={() => validateIdentifier(identifier)}
+                  placeholder="tu@email.com o 12345678"
                   required
                   disabled={isLoading}
+                  className={fieldErrors.identifier ? "border-red-500" : ""}
+                  aria-invalid={!!fieldErrors.identifier}
+                  aria-describedby={fieldErrors.identifier ? "identifier-error" : undefined}
                 />
+                {fieldErrors.identifier && (
+                  <p className="text-sm text-red-600" id="identifier-error">
+                    {fieldErrors.identifier}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  disabled={isLoading}
-                />
+                <Label htmlFor="password" className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-gray-400" />
+                  Contraseña
+                </Label>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => {
+                      setPassword(e.target.value)
+                      setFieldErrors(prev => ({ ...prev, password: undefined }))
+                    }}
+                    onBlur={() => validatePassword(password)}
+                    placeholder="••••••••"
+                    required
+                    disabled={isLoading}
+                    className={fieldErrors.password ? "border-red-500 pr-10" : "pr-10"}
+                    aria-invalid={!!fieldErrors.password}
+                    aria-describedby={fieldErrors.password ? "password-error" : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    tabIndex={-1}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+                {fieldErrors.password && (
+                  <p className="text-sm text-red-600" id="password-error">
+                    {fieldErrors.password}
+                  </p>
+                )}
               </div>
 
               <Button type="submit" className="w-full" disabled={isLoading}>

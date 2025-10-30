@@ -63,89 +63,115 @@ enum FAQStatus {
   ARCHIVED
 }
 
+enum DeviceProtocol {
+  MQTT
+  HTTP
+  Serial
+}
+
+enum DeviceConnectionStatus {
+  CONNECTING
+  CONNECTED
+  DISCONNECTED
+  ERROR
+  RECONNECTING
+}
+
 /// ---------- CORE ENTITIES ----------
 model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  name          String?
-  phone         String?
-  role          Role     @default(AGENT)
-  isActive      Boolean  @default(true)
+  id                String    @id @default(cuid())
+  email             String    @unique
+  name              String?
+  phone             String?
+  role              Role      @default(AGENT)
+  isActive          Boolean   @default(true)
   // Auth fields for internal users (admins/agents)
-  password      String?
+  password          String?
   passwordUpdatedAt DateTime?
   // NextAuth optional fields if usas Credentials u OAuth:
-  image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  image             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   // Relations
-  branches      Branch[]        @relation("BranchAdmins")
-  approvals     RegistrationRequest[] @relation("Approver")
-  cameras       Camera[]        @relation("CameraOwner")
-  auditLogs     AuditLog[]      @relation("AuditActor")
+  branches  Branch[]              @relation("BranchAdmins")
+  approvals RegistrationRequest[] @relation("Approver")
+  cameras   Camera[]              @relation("CameraOwner")
+  auditLogs AuditLog[]            @relation("AuditActor")
+
+  @@index([email])
+  @@index([role, isActive])
 }
 
 /// Cliente/visitante del agente bancario
 model Client {
-  id               String        @id @default(cuid())
-  dni              String?       @unique
-  name             String?
-  email            String?       @unique
-  phone            String?
-  status           ClientStatus  @default(ACTIVE)
+  id                String       @id @default(cuid())
+  dni               String?      @unique
+  name              String?
+  email             String?      @unique
+  phone             String?
+  status            ClientStatus @default(ACTIVE)
   // Auth simple para clientes (flujo: registro guiado + login con password)
-  hashedPassword   String?
+  hashedPassword    String?
   passwordUpdatedAt DateTime?
   // Preferencias básicas
-  locale           String?       // "es-PE", etc.
+  locale            String? // "es-PE", etc.
 
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   facialProfiles   FacialProfile[]
   detections       DetectionEvent[]
   visits           Visit[]
   chatSessions     ChatSession[]
+  chatMetrics      ChatMetric[]          @relation("ChatMetricsClient")
   registrationReqs RegistrationRequest[]
   resetTokens      PasswordResetToken[]
-  auditLogs        AuditLog[]      @relation("AuditTargetClient")
+  auditLogs        AuditLog[]            @relation("AuditTargetClient")
+
+  @@index([dni])
+  @@index([email])
+  @@index([status, createdAt])
+  @@index([phone])
 }
 
 /// Multi-sede (tienda/ubicación del agente)
 model Branch {
-  id          String   @id @default(cuid())
-  name        String
-  code        String   @unique
-  address     String?
-  city        String?
-  country     String?  // "PE"
+  id      String  @id @default(cuid())
+  name    String
+  code    String  @unique
+  address String?
+  city    String?
+  country String? // "PE"
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  modules     AgentModule[]
-  cameras     Camera[]
-  admins      User[]    @relation("BranchAdmins")
-  visits      Visit[]
+  modules          AgentModule[]
+  cameras          Camera[]
+  admins           User[]                @relation("BranchAdmins")
+  visits           Visit[]
   registrationReqs RegistrationRequest[]
+
+  @@index([code])
+  @@index([country, city])
 }
 
 /// Módulo/counter físico dentro de una Branch
 model AgentModule {
-  id          String   @id @default(cuid())
-  branchId    String
-  name        String
-  code        String
-  isActive    Boolean  @default(true)
+  id       String  @id @default(cuid())
+  branchId String
+  name     String
+  code     String
+  isActive Boolean @default(true)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  branch      Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  cameras     Camera[]
-  visits      Visit[]
+  branch  Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  cameras Camera[]
+  visits  Visit[]
 
   @@unique([branchId, code])
   @@index([branchId])
@@ -160,16 +186,16 @@ model Camera {
   streamUrl     String?
   status        CameraStatus @default(OFFLINE)
   lastHeartbeat DateTime?
-  ownerUserId   String?      // responsable técnico del dispositivo
+  ownerUserId   String? // responsable técnico del dispositivo
 
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  branch        Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  module        AgentModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
-  owner         User?        @relation("CameraOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
-  detections    DetectionEvent[]
-  logs          CameraLog[]
+  branch     Branch           @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  module     AgentModule?     @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  owner      User?            @relation("CameraOwner", fields: [ownerUserId], references: [id], onDelete: SetNull)
+  detections DetectionEvent[]
+  logs       CameraLog[]
 
   @@index([branchId])
   @@index([moduleId])
@@ -178,19 +204,19 @@ model Camera {
 
 /// Perfil facial (plantilla/embedding por cliente)
 model FacialProfile {
-  id             String   @id @default(cuid())
+  id             String  @id @default(cuid())
   clientId       String
-  provider       String   // "azure-vision", "aws-rekognition", "opencv", etc.
-  providerFaceId String?  @unique
-  version        String?  // versión de modelo
-  embedding      Json?    // almacenar vector/descriptor (JSON)
-  imageUrl       String?  // snapshot de registro
-  isActive       Boolean  @default(true)
+  provider       String // "azure-vision", "aws-rekognition", "opencv", etc.
+  providerFaceId String? @unique
+  version        String? // versión de modelo
+  embedding      Json? // almacenar vector/descriptor (JSON)
+  imageUrl       String? // snapshot de registro
+  isActive       Boolean @default(true)
 
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  client         Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId])
   @@index([provider])
@@ -198,164 +224,249 @@ model FacialProfile {
 
 /// Detecciones por cámara
 model DetectionEvent {
-  id            String          @id @default(cuid())
-  cameraId      String
-  clientId      String?         // nulo si no hubo match
-  status        DetectionStatus
-  confidence    Float?
-  snapshotUrl   String?
-  metadata      Json?           // bounding boxes, landmarks, etc.
-  occurredAt    DateTime        @default(now())
+  id          String          @id @default(cuid())
+  cameraId    String
+  clientId    String? // nulo si no hubo match
+  status      DetectionStatus
+  confidence  Float?
+  snapshotUrl String?
+  metadata    Json? // bounding boxes, landmarks, etc.
+  occurredAt  DateTime        @default(now())
 
-  camera        Camera          @relation(fields: [cameraId], references: [id], onDelete: Cascade)
-  client        Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  visit         Visit?
+  camera Camera  @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  client Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  visit  Visit?
 
   @@index([cameraId, occurredAt])
   @@index([clientId, occurredAt])
   @@index([status])
+  @@index([status, occurredAt])
 }
 
 /// Visitas/atenciones en el local
 model Visit {
-  id              String       @id @default(cuid())
-  clientId        String?
-  branchId        String
-  moduleId        String?
-  detectionId     String?      @unique
-  status          VisitStatus  @default(WAITING)
-  purpose         String?      // "retiro", "pago", "consulta"
-  startedAt       DateTime     @default(now())
-  assignedAt      DateTime?
-  finishedAt      DateTime?
+  id          String      @id @default(cuid())
+  clientId    String?
+  branchId    String
+  moduleId    String?
+  detectionId String?     @unique
+  status      VisitStatus @default(WAITING)
+  purpose     String? // "retiro", "pago", "consulta"
+  startedAt   DateTime    @default(now())
+  assignedAt  DateTime?
+  finishedAt  DateTime?
 
-  client          Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  branch          Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  module          AgentModule? @relation(fields: [moduleId], references: [id], onDelete: SetNull)
-  detection       DetectionEvent? @relation(fields: [detectionId], references: [id], onDelete: SetNull)
+  client    Client?         @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  branch    Branch          @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  module    AgentModule?    @relation(fields: [moduleId], references: [id], onDelete: SetNull)
+  detection DetectionEvent? @relation(fields: [detectionId], references: [id], onDelete: SetNull)
 
   @@index([branchId, startedAt])
   @@index([status])
+  @@index([clientId, status])
 }
 
 /// Solicitudes de registro del cliente (requiere aprobación del admin)
 model RegistrationRequest {
-  id           String             @id @default(cuid())
-  clientId     String
-  branchId     String?
-  status       RegistrationStatus  @default(PENDING)
-  reason       String?
-  approverId   String?
-  decidedAt    DateTime?
+  id         String             @id @default(cuid())
+  clientId   String
+  branchId   String?
+  status     RegistrationStatus @default(PENDING)
+  reason     String?
+  approverId String?
+  decidedAt  DateTime?
 
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  client       Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  branch       Branch?            @relation(fields: [branchId], references: [id], onDelete: SetNull)
-  approver     User?              @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
+  client   Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  branch   Branch? @relation(fields: [branchId], references: [id], onDelete: SetNull)
+  approver User?   @relation("Approver", fields: [approverId], references: [id], onDelete: SetNull)
 
   @@index([clientId])
   @@index([status])
+  @@index([status, createdAt])
+  @@index([branchId, status])
 }
 
 /// Tokens para resetear contraseña (clientes)
 model PasswordResetToken {
-  id         String   @id @default(cuid())
-  clientId   String
-  token      String   @unique
-  expiresAt  DateTime
-  usedAt     DateTime?
+  id        String    @id @default(cuid())
+  clientId  String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
-  client     Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, expiresAt])
 }
 
 /// ---------- CHATBOT / DATASET ----------
 model FAQ {
-  id          String    @id @default(cuid())
-  title       String
-  answer      String
-  tags        String[]  // ["retiro","pagos","cuentas"]
-  status      FAQStatus @default(DRAFT)
+  id     String    @id @default(cuid())
+  title  String
+  answer String
+  tags   String[] // ["retiro","pagos","cuentas"]
+  status FAQStatus @default(DRAFT)
 
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([status])
   @@index([tags])
+  @@index([status, createdAt])
 }
 
 model QAPair {
-  id          String   @id @default(cuid())
-  question    String
-  answer      String
-  metadata    Json?
-  isActive    Boolean  @default(true)
+  id       String  @id @default(cuid())
+  question String
+  answer   String
+  metadata Json?
+  isActive Boolean @default(true)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([isActive])
+  @@index([isActive, createdAt])
 }
 
 /// Sesión de chat por cliente (o visitante no logueado con tempId)
 model ChatSession {
-  id            String       @id @default(cuid())
+  id            String    @id @default(cuid())
   clientId      String?
-  tempVisitorId String?      // para visitantes antes de registrarse
-  startedAt     DateTime     @default(now())
+  tempVisitorId String? // para visitantes antes de registrarse
+  startedAt     DateTime  @default(now())
   endedAt       DateTime?
 
-  client        Client?      @relation(fields: [clientId], references: [id], onDelete: SetNull)
-  messages      ChatMessage[]
+  client   Client?       @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  messages ChatMessage[]
+  metrics  ChatMetric[]
 
   @@index([clientId, startedAt])
+  @@index([tempVisitorId])
+  @@index([startedAt])
 }
 
 model ChatMessage {
-  id            String     @id @default(cuid())
-  sessionId     String
-  actor         ChatActor
-  content       String
-  intent        String?    // intent clasificado opcional
-  metadata      Json?
-  createdAt     DateTime   @default(now())
+  id        String    @id @default(cuid())
+  sessionId String
+  actor     ChatActor
+  content   String
+  intent    String? // intent clasificado opcional
+  metadata  Json?
+  createdAt DateTime  @default(now())
 
-  session       ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
 
   @@index([sessionId, createdAt])
   @@index([actor])
+  @@index([actor, createdAt])
+  @@index([intent])
 }
 
 /// ---------- LOGGING ----------
 model CameraLog {
-  id          String    @id @default(cuid())
-  cameraId    String
-  level       String    // INFO/WARN/ERROR
-  message     String
-  meta        Json?
-  createdAt   DateTime  @default(now())
+  id        String   @id @default(cuid())
+  cameraId  String
+  level     String // INFO/WARN/ERROR
+  message   String
+  meta      Json?
+  createdAt DateTime @default(now())
 
-  camera      Camera    @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+  camera Camera @relation(fields: [cameraId], references: [id], onDelete: Cascade)
 
   @@index([cameraId, createdAt])
 }
 
 model AuditLog {
-  id             String    @id @default(cuid())
+  id             String   @id @default(cuid())
   actorUserId    String?
   targetClientId String?
-  action         String    // "CLIENT_BLOCKED", "RESET_PASSWORD", "APPROVE_REGISTRATION", etc.
+  action         String // "CLIENT_BLOCKED", "RESET_PASSWORD", "APPROVE_REGISTRATION", etc.
   details        Json?
-  createdAt      DateTime  @default(now())
+  createdAt      DateTime @default(now())
 
-  actorUser      User?     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  targetClient   Client?   @relation("AuditTargetClient", fields: [targetClientId], references: [id], onDelete: SetNull)
+  actorUser    User?   @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetClient Client? @relation("AuditTargetClient", fields: [targetClientId], references: [id], onDelete: SetNull)
 
   @@index([actorUserId, createdAt])
   @@index([targetClientId, createdAt])
+}
+
+/// ---------- DEVICE INTEGRATION ----------
+model Device {
+  id                  String         @id @default(cuid())
+  name                String
+  protocol            DeviceProtocol
+  enabled             Boolean        @default(true)
+  // MQTT config
+  mqttBroker          String?
+  mqttPort            Int?
+  mqttTopic           String?
+  mqttClientId        String?
+  mqttUsername        String?
+  mqttPassword        String?
+  // HTTP config
+  httpUrl             String?
+  httpApiKey          String?
+  // Serial config
+  serialPort          String?
+  serialBaudRate      Int?
+  // Connection settings
+  reconnectInterval   Int? // seconds
+  healthCheckInterval Int? // seconds
+  timeout             Int? // milliseconds
+  maxRetries          Int?
+  backoffMultiplier   Float?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  messages DeviceMessage[]
+
+  @@index([protocol])
+  @@index([enabled])
+}
+
+model DeviceMessage {
+  id         String   @id @default(cuid())
+  deviceId   String
+  type       String
+  payload    Json
+  success    Boolean
+  retryCount Int      @default(0)
+  timestamp  DateTime
+
+  device Device @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, timestamp])
+  @@index([success])
+  @@index([type, timestamp])
+}
+
+/// ---------- CHATBOT METRICS ----------
+model ChatMetric {
+  id           String   @id @default(cuid())
+  sessionId    String?
+  clientId     String?
+  latency      Int // milliseconds
+  success      Boolean  @default(true)
+  intent       String?
+  usedContext  Boolean  @default(false)
+  contextItems Int?     @default(0)
+  errorMessage String?
+  timestamp    DateTime @default(now())
+
+  session ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
+  client  Client?      @relation("ChatMetricsClient", fields: [clientId], references: [id], onDelete: SetNull)
+
+  @@index([sessionId, timestamp])
+  @@index([clientId, timestamp])
+  @@index([success, timestamp])
+  @@index([intent])
+  @@index([timestamp])
 }

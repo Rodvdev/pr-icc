@@ -10,6 +10,7 @@ export { faqService, FAQService } from './faq.service'
 export { cameraService, CameraService } from './camera.service'
 export { visitService, VisitService } from './visit.service'
 export { facialRecognitionService, FacialRecognitionService } from './facial-recognition.service'
+export { deviceIntegrationService, DeviceIntegrationService } from './device-integration.service'
 
 // Re-export types for convenience
 export type {
@@ -50,4 +51,12 @@ export type {
   FacialRegistrationData,
   FacialDetectionData
 } from './facial-recognition.service'
+
+export type {
+  DeviceConfig,
+  DeviceHealth,
+  DeviceMessage,
+  DeviceProtocol,
+  DeviceConnectionStatus
+} from './device-integration.service'
 
