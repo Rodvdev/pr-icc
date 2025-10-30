@@ -10,6 +10,7 @@ import face_recognition
 from pathlib import Path
 from datetime import datetime, timedelta
 import os
+import base64
 
 app = Flask(__name__)
 CORS(app)
@@ -21,6 +22,7 @@ THRESHOLD = 0.6
 DOWNSCALE = 0.5
 FRAMES_DIR = "captured_frames"
 RESULTS_DIR = "recognition_results"
+REG_DIR = "capturas_registro"
 
 # Estado global
 recognition_active = False
@@ -32,6 +34,7 @@ recognition_thread = None
 # Crear directorios
 os.makedirs(FRAMES_DIR, exist_ok=True)
 os.makedirs(RESULTS_DIR, exist_ok=True)
+os.makedirs(REG_DIR, exist_ok=True)
 
 def load_encodings():
     """Cargar encodings faciales desde archivos"""
@@ -46,6 +49,27 @@ def load_encodings():
         encs = encs.astype(np.float32)
     
     return encs, labels
+
+def load_latest_meta_by_name(name: str):
+    """Buscar el último archivo de metadata para un nombre dado y retornar sus datos.
+    Asume que los archivos se guardan como <dni>_<timestamp>.json con key name en el contenido.
+    """
+    try:
+        metas = []
+        for fn in os.listdir(REG_DIR):
+            if fn.endswith('.json'):
+                fp = os.path.join(REG_DIR, fn)
+                with open(fp, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    if data.get('name') == name:
+                        metas.append((fp, data))
+        if not metas:
+            return None
+        # Tomar el más reciente por fecha de archivo
+        metas.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
+        return metas[0][1]
+    except Exception:
+        return None
 
 def best_match(unknown_enc: np.ndarray, known_encs: np.ndarray, labels: list, thr=THRESHOLD):
     """Encontrar la mejor coincidencia"""
@@ -640,12 +664,355 @@ def update_config():
 @app.route('/api/register', methods=['POST'])
 def register_person():
     """Registrar una nueva persona"""
-    # Esta función requiere implementación adicional
-    # Por ahora, usar register_auto.py manualmente
-    return jsonify({
-        "message": "Usa el script register_auto.py para registrar personas",
-        "instructions": "Ejecuta: python register_auto.py"
-    })
+    global ENCODINGS_NPY, LABELS_JSON
+
+    try:
+        data = request.get_json(silent=True) or {}
+
+        name = (data.get("name") or "").strip()
+        dni = (data.get("dni") or "").strip()
+        email = (data.get("email") or "").strip()
+        phone = (data.get("phone") or "").strip()
+        password = (data.get("password") or "").strip()  # No se almacena en texto plano
+        photo_data = data.get("photoData")
+
+        # Validaciones mínimas
+        if not name:
+            return jsonify({"error": "El nombre es obligatorio"}), 400
+        if not dni:
+            return jsonify({"error": "El DNI es obligatorio"}), 400
+        if not email:
+            return jsonify({"error": "El email es obligatorio"}), 400
+        if not phone:
+            return jsonify({"error": "El teléfono es obligatorio"}), 400
+        if not password or len(password) < 6:
+            return jsonify({"error": "La contraseña debe tener al menos 6 caracteres"}), 400
+        if not photo_data:
+            return jsonify({"error": "La foto (photoData) es obligatoria"}), 400
+
+        # Decodificar imagen base64 (data URL o base64 pura)
+        try:
+            if "," in photo_data:
+                photo_data = photo_data.split(",", 1)[1]
+            img_bytes = base64.b64decode(photo_data)
+        except Exception:
+            return jsonify({"error": "No se pudo decodificar la imagen base64"}), 400
+
+        # Convertir bytes a imagen OpenCV
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if frame is None:
+            return jsonify({"error": "Imagen inválida"}), 400
+
+        # Extraer encoding facial (exigir exactamente un rostro)
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        boxes = face_recognition.face_locations(rgb, model="hog")
+        encs = face_recognition.face_encodings(rgb, boxes)
+
+        if len(encs) == 0:
+            return jsonify({"error": "No se detectó ningún rostro en la foto"}), 400
+        if len(encs) > 1:
+            return jsonify({"error": "Se detectaron múltiples rostros. Usa una foto con una sola persona"}), 400
+
+        new_enc = encs[0].astype(np.float32)
+
+        # Cargar existentes y agregar nuevo encoding/label
+        existing_encs, labels = load_encodings()
+        if existing_encs is None:
+            updated_encs = new_enc.reshape(1, -1)
+            labels = [name]
+        else:
+            updated_encs = np.vstack([existing_encs.astype(np.float32), new_enc.reshape(1, -1)])
+            labels.append(name)
+
+        # Persistir en disco
+        np.save(ENCODINGS_NPY, updated_encs.astype(np.float32))
+        with open(LABELS_JSON, "w", encoding="utf-8") as f:
+            json.dump(labels, f, ensure_ascii=False, indent=2)
+
+        # Guardar foto de registro con metadatos mínimos
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"{dni}_{timestamp}.jpg"
+        filepath = os.path.join(REG_DIR, filename)
+        cv2.imwrite(filepath, frame)
+
+        # Opcional: almacenar metadata ligera por registro
+        meta = {
+            "name": name,
+            "dni": dni,
+            "email": email,
+            "phone": phone,
+            "registered_at": datetime.now().isoformat(),
+            "photo_file": os.path.join(REG_DIR, filename)
+        }
+        meta_file = os.path.join(REG_DIR, f"{dni}_{timestamp}.json")
+        with open(meta_file, "w", encoding="utf-8") as mf:
+            json.dump(meta, mf, ensure_ascii=False, indent=2)
+
+        return jsonify({
+            "status": "created",
+            "message": "Usuario registrado y encoding guardado",
+            "user": {"name": name, "dni": dni, "email": email, "phone": phone},
+            "encodings_total": int(updated_encs.shape[0])
+        }), 201
+
+    except Exception as e:
+        return jsonify({"error": f"Error inesperado: {str(e)}"}), 500
+
+@app.route('/api/kiosk/detect', methods=['POST'])
+def kiosk_detect():
+    """Detectar rostro a partir de una imagen base64 y retornar estado simple para el kiosko."""
+    try:
+        data = request.get_json(silent=True) or {}
+        image_data = data.get('imageData')
+        if not image_data:
+            return jsonify({"message": "imageData requerido"}), 400
+
+        # Cargar encodings existentes
+        known_encs, labels = load_encodings()
+        if known_encs is None or labels is None:
+            return jsonify({
+                "status": "error",
+                "message": "No hay encodings disponibles. Registra usuarios primero."
+            }), 503
+
+        # Decodificar data URL/base64
+        if "," in image_data:
+            image_data = image_data.split(",", 1)[1]
+        img_bytes = base64.b64decode(image_data)
+
+        img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+        frame = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+        if frame is None:
+            return jsonify({"status": "error", "message": "Imagen inválida"}), 400
+
+        # Extraer encodings del frame (tomar el primer rostro)
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        boxes = face_recognition.face_locations(rgb, model="hog")
+        encs = face_recognition.face_encodings(rgb, boxes)
+
+        if not encs:
+            return jsonify({
+                "status": "unknown",
+                "message": "No se detectó ningún rostro"
+            }), 200
+
+        unknown = encs[0]
+        name, dist = best_match(unknown, known_encs, labels, THRESHOLD)
+        confidence = max(0.0, min(1.0, 1 - float(dist)))
+
+        if name != "Desconocido":
+            meta = load_latest_meta_by_name(name) or {}
+            return jsonify({
+                "status": "recognized",
+                "clientName": name,
+                "clientId": meta.get("dni"),
+                "confidence": round(confidence, 2),
+                "message": "Cliente reconocido"
+            })
+        else:
+            return jsonify({
+                "status": "unknown",
+                "message": "No se encontró coincidencia",
+                "confidence": round(confidence, 2)
+            })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/kiosk/client/<client_id>', methods=['GET'])
+def kiosk_client(client_id):
+    """Devolver datos básicos del cliente por id (usar DNI como id)."""
+    try:
+        # Buscar el meta más reciente con ese DNI
+        metas = []
+        for fn in os.listdir(REG_DIR):
+            if fn.endswith('.json') and fn.startswith(f"{client_id}_"):
+                fp = os.path.join(REG_DIR, fn)
+                with open(fp, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    metas.append((fp, data))
+        if not metas:
+            return jsonify({"message": "Cliente no encontrado"}), 404
+        metas.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
+        data = metas[0][1]
+
+        resp = {
+            "id": data.get("dni"),
+            "name": data.get("name"),
+            "email": data.get("email"),
+            "lastVisit": None,
+            "pendingDocuments": 0,
+            "upcomingAppointments": 0,
+        }
+        return jsonify(resp)
+    except Exception as e:
+        return jsonify({"message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/kiosk/visit', methods=['POST'])
+def kiosk_visit():
+    """Crear una visita simple y devolver un id sintético."""
+    try:
+        data = request.get_json(silent=True) or {}
+        client_id = data.get('clientId')
+        purpose = data.get('purpose')
+        if not client_id or not purpose:
+            return jsonify({"message": "clientId y purpose son requeridos"}), 400
+        visit_id = f"v_{int(time.time())}"
+        return jsonify({"visitId": visit_id, "clientId": client_id, "purpose": purpose})
+    except Exception as e:
+        return jsonify({"message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/auth/client/login', methods=['POST'])
+def client_login():
+    """Autenticación de clientes por DNI y contraseña."""
+    try:
+        data = request.get_json(silent=True) or {}
+        dni = (data.get('dni') or "").strip()
+        password = data.get('password') or ""
+        
+        if not dni or not password:
+            return jsonify({"message": "DNI y contraseña son requeridos"}), 400
+        
+        # Buscar metadata del cliente por DNI
+        metas = []
+        for fn in os.listdir(REG_DIR):
+            if fn.endswith('.json') and fn.startswith(f"{dni}_"):
+                fp = os.path.join(REG_DIR, fn)
+                with open(fp, 'r', encoding='utf-8') as f:
+                    data_meta = json.load(f)
+                    metas.append((fp, data_meta))
+        
+        if not metas:
+            return jsonify({"message": "Credenciales inválidas"}), 401
+        
+        # Tomar el más reciente
+        metas.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
+        client_data = metas[0][1]
+        
+        # Validación simple de contraseña (en producción usar hash)
+        # Por ahora, asumimos que la contraseña es "client123" o se valida de otra forma
+        # TODO: Implementar hashing de contraseñas
+        stored_password = "client123"  # Placeholder
+        
+        if password != stored_password:
+            return jsonify({"message": "Credenciales inválidas"}), 401
+        
+        return jsonify({
+            "client": {
+                "id": client_data.get("dni"),
+                "name": client_data.get("name"),
+                "email": client_data.get("email"),
+                "status": "ACTIVE"
+            },
+            "message": "Inicio de sesión exitoso"
+        })
+    except Exception as e:
+        return jsonify({"message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/auth/client/reset-password', methods=['POST'])
+def client_reset_password():
+    """Solicitar reset de contraseña por email."""
+    try:
+        data = request.get_json(silent=True) or {}
+        email = (data.get('email') or "").strip()
+        
+        if not email:
+            return jsonify({"message": "Email es requerido"}), 400
+        
+        # Buscar si existe un cliente con ese email
+        found = False
+        for fn in os.listdir(REG_DIR):
+            if fn.endswith('.json'):
+                fp = os.path.join(REG_DIR, fn)
+                with open(fp, 'r', encoding='utf-8') as f:
+                    client_data = json.load(f)
+                    if client_data.get('email') == email:
+                        found = True
+                        break
+        
+        # Por seguridad, siempre retornar éxito (no revelar si el email existe)
+        return jsonify({
+            "message": "Si existe una cuenta con ese email, recibirás instrucciones para restablecer tu contraseña"
+        })
+    except Exception as e:
+        return jsonify({"message": f"Error: {str(e)}"}), 500
+
+@app.route('/api/admin/encodings', methods=['GET'])
+def admin_encodings():
+    """Listar todos los usuarios registrados con sus encodings."""
+    try:
+        _, labels = load_encodings()
+        if labels is None:
+            return jsonify({"encodings": [], "total": 0})
+        
+        # Obtener metadata de cada usuario
+        users = []
+        unique_names = list(set(labels))
+        for name in unique_names:
+            meta = load_latest_meta_by_name(name)
+            if meta:
+                users.append({
+                    "name": meta.get("name"),
+                    "dni": meta.get("dni"),
+                    "email": meta.get("email"),
+                    "phone": meta.get("phone"),
+                    "registeredAt": meta.get("registered_at"),
+                    "photoFile": meta.get("photo_file")
+                })
+        
+        return jsonify({
+            "encodings": users,
+            "total": len(users),
+            "encodingCount": len(labels)
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/admin/clients/<dni>', methods=['DELETE'])
+def admin_delete_client(dni):
+    """Eliminar un cliente y su encoding facial."""
+    try:
+        # Buscar y eliminar archivos de metadata
+        deleted = []
+        for fn in os.listdir(REG_DIR):
+            if fn.startswith(f"{dni}_"):
+                fp = os.path.join(REG_DIR, fn)
+                os.remove(fp)
+                deleted.append(fn)
+        
+        if not deleted:
+            return jsonify({"message": "Cliente no encontrado"}), 404
+        
+        # Eliminar del encoding y labels
+        known_encs, labels = load_encodings()
+        if known_encs is not None and labels is not None:
+            # Buscar el nombre asociado al DNI
+            meta = None
+            for fn in os.listdir(REG_DIR):
+                if fn.endswith('.json') and fn.startswith(f"{dni}_"):
+                    fp = os.path.join(REG_DIR, fn)
+                    with open(fp, 'r', encoding='utf-8') as f:
+                        meta = json.load(f)
+                        break
+            
+            if meta:
+                name = meta.get('name')
+                # Eliminar todas las ocurrencias del nombre
+                updated_labels = [l for l in labels if l != name]
+                if len(updated_labels) < len(labels):
+                    # Reconstruir encodings sin ese usuario
+                    indices_to_keep = [i for i, l in enumerate(labels) if l != name]
+                    updated_encs = known_encs[indices_to_keep]
+                    np.save(ENCODINGS_NPY, updated_encs.astype(np.float32))
+                    with open(LABELS_JSON, 'w', encoding='utf-8') as f:
+                        json.dump(updated_labels, f, ensure_ascii=False, indent=2)
+        
+        return jsonify({
+            "message": "Cliente eliminado correctamente",
+            "deletedFiles": deleted
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 def add_seed_results():
     """Agregar 5 resultados de prueba al inicio"""

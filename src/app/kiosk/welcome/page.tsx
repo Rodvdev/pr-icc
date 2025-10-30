@@ -47,7 +47,7 @@ function KioskWelcomeContent() {
 
     const fetchClientData = async () => {
       try {
-        const response = await fetch(`/api/kiosk/client/${clientId}`)
+        const response = await fetch(`http://localhost:5001/api/kiosk/client/${clientId}`)
         
         if (!response.ok) {
           throw new Error('No se pudo cargar la información del cliente')
@@ -69,7 +69,7 @@ function KioskWelcomeContent() {
     if (!clientId) return
 
     try {
-      const response = await fetch('/api/kiosk/visit', {
+      const response = await fetch('http://localhost:5001/api/kiosk/visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

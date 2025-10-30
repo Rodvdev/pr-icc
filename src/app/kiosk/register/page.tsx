@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -55,6 +55,8 @@ export default function KioskRegisterPage() {
   })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [isCameraActive, setIsCameraActive] = useState(false)
 
   const steps: Array<{ id: RegistrationStep; label: string; icon: typeof User }> = [
     { id: 'personal', label: 'Datos Personales', icon: User },
@@ -130,7 +132,7 @@ export default function KioskRegisterPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      const response = await fetch('/api/register', {
+      const response = await fetch('http://localhost:5001/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -147,7 +149,7 @@ export default function KioskRegisterPage() {
         setCurrentStep('success')
       } else {
         const error = await response.json()
-        setErrors({ submit: error.message || 'Error al registrar' })
+        setErrors({ submit: error.error || error.message || 'Error al registrar' })
       }
     } catch {
       setErrors({ submit: 'Error de conexión. Intenta de nuevo.' })
@@ -156,11 +158,44 @@ export default function KioskRegisterPage() {
     }
   }
 
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream
+        await videoRef.current.play()
+        setIsCameraActive(true)
+      }
+    } catch {
+      setErrors({ photoData: 'No se pudo acceder a la cámara' })
+    }
+  }
+
+  const stopCamera = () => {
+    if (videoRef.current?.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream
+      stream.getTracks().forEach(t => t.stop())
+      videoRef.current.srcObject = null
+    }
+    setIsCameraActive(false)
+  }
+
   const capturePhoto = async () => {
-    // Simulación de captura de foto
-    // En producción, esto abriría la cámara y capturaría una imagen
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    updateField('photoData', 'data:image/png;base64,simulated-photo-data')
+    try {
+      if (!videoRef.current) return
+      const video = videoRef.current
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth || 640
+      canvas.height = video.videoHeight || 480
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('No se pudo crear el contexto de imagen')
+      ctx.drawImage(video, 0, 0)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+      updateField('photoData', dataUrl)
+      stopCamera()
+    } catch {
+      setErrors({ photoData: 'No se pudo capturar la foto' })
+    }
   }
 
   return (
@@ -364,11 +399,13 @@ export default function KioskRegisterPage() {
 
               <div className="max-w-lg mx-auto space-y-6">
                 <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden relative">
-                  {!formData.photoData ? (
+                  {isCameraActive ? (
+                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+                  ) : !formData.photoData ? (
                     <div className="absolute inset-0 flex items-center justify-center text-white">
                       <div className="text-center space-y-4">
                         <Camera className="w-16 h-16 mx-auto opacity-50" />
-                        <p>Presiona el botón para capturar tu foto</p>
+                        <p>Presiona "Activar Cámara" y luego "Capturar Foto"</p>
                       </div>
                     </div>
                   ) : (
@@ -382,22 +419,39 @@ export default function KioskRegisterPage() {
                 </div>
 
                 {!formData.photoData ? (
-                  <Button
-                    onClick={capturePhoto}
-                    className="w-full h-14 text-lg"
-                    size="lg"
-                  >
-                    <Camera className="w-5 h-5 mr-2" />
-                    Capturar Foto
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    {!isCameraActive ? (
+                      <Button onClick={startCamera} className="h-14 text-lg" size="lg">
+                        Activar Cámara
+                      </Button>
+                    ) : (
+                      <Button onClick={capturePhoto} className="h-14 text-lg" size="lg">
+                        <Camera className="w-5 h-5 mr-2" />
+                        Capturar Foto
+                      </Button>
+                    )}
+                    {isCameraActive && (
+                      <Button onClick={stopCamera} variant="outline" className="h-14" size="lg">
+                        Cancelar
+                      </Button>
+                    )}
+                  </div>
                 ) : (
-                  <Button
-                    onClick={() => updateField('photoData', '')}
-                    variant="outline"
-                    className="w-full h-12"
-                  >
-                    Tomar Nueva Foto
-                  </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <Button
+                      onClick={() => {
+                        updateField('photoData', '')
+                        startCamera()
+                      }}
+                      variant="outline"
+                      className="h-12"
+                    >
+                      Tomar Nueva Foto
+                    </Button>
+                    <Button onClick={() => setCurrentStep('review')} className="h-12">
+                      Continuar
+                    </Button>
+                  </div>
                 )}
 
                 <Card className="p-4 bg-yellow-50 border-yellow-200">

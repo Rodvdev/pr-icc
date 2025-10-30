@@ -34,7 +34,7 @@ export default function KioskResetPasswordPage() {
     setError('')
 
     try {
-      await fetch('/api/auth/client/reset-password', {
+      await fetch('http://localhost:5001/api/auth/client/reset-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })

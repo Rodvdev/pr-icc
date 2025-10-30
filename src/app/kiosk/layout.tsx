@@ -1,6 +1,5 @@
-"use client"
-
-import { ReactNode, useEffect, useState } from "react"
+import { ReactNode } from "react"
+import HeaderClock from "@/components/kiosk/HeaderClock"
 
 export const metadata = {
   title: "Kiosco Bancario",
@@ -14,13 +13,6 @@ export const metadata = {
  * - UI simple y accesible
  */
 export default function KioskLayout({ children }: { children: ReactNode }) {
-  const [now, setNow] = useState<Date>(new Date())
-
-  useEffect(() => {
-    const intervalId = setInterval(() => setNow(new Date()), 30_000)
-    return () => clearInterval(intervalId)
-  }, [])
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       {/* Header fijo con logo */}
@@ -39,19 +31,7 @@ export default function KioskLayout({ children }: { children: ReactNode }) {
             
             {/* Indicador de tiempo */}
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-900">
-                {now.toLocaleDateString('es-PE', {
-                  weekday: 'long',
-                  day: 'numeric',
-                  month: 'long',
-                })}
-              </p>
-              <p className="text-xs text-gray-500">
-                {now.toLocaleTimeString('es-PE', {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </p>
+              <HeaderClock />
             </div>
           </div>
         </div>

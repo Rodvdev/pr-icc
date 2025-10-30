@@ -62,7 +62,7 @@ export default function KioskHomePage() {
       }
 
       // Llamar a la API de detección con la imagen capturada
-      const response = await fetch('/api/kiosk/detect', {
+      const response = await fetch('http://localhost:5001/api/kiosk/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
