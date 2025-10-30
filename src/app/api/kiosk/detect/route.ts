@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
+import { facialRecognitionService } from '@/services/facial-recognition.service'
 
 /**
  * POST /api/kiosk/detect
  * Endpoint para detección facial en el kiosco
+ * Conectado con API externa de Python/ESP32
  * 
- * Body: { cameraId: string, timestamp: string, imageData?: string }
+ * Body: { cameraId: string, timestamp: string, imageData: string }
  * Returns: { success: boolean, status: string, clientId?: string, confidence?: number }
  */
 export async function POST(request: NextRequest) {
@@ -20,40 +21,30 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Integrate with Azure Face API or AWS Rekognition
-    // For now, simulate facial recognition with random results
-    
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    if (!imageData) {
+      return NextResponse.json(
+        { success: false, error: 'imageData es requerido' },
+        { status: 400 }
+      )
+    }
 
-    // Mock facial recognition logic
-    const mockResults = [
-      { status: 'recognized', clientId: 'client-001', confidence: 0.95 },
-      { status: 'recognized', clientId: 'client-002', confidence: 0.87 },
-      { status: 'new_face', clientId: null, confidence: 0.0 },
-      { status: 'unknown', clientId: null, confidence: 0.0 },
-      { status: 'multiple_matches', clientId: null, confidence: 0.0 }
-    ]
-
-    const result = mockResults[Math.floor(Math.random() * mockResults.length)]
-
-    // Log detection event
-    await prisma.detectionEvent.create({
-      data: {
-        cameraId,
-        status: result.status as 'MATCHED' | 'NEW_FACE' | 'MULTIPLE_MATCHES' | 'UNKNOWN',
-        confidence: result.confidence,
-        clientId: result.clientId,
-        metadata: {
-          timestamp,
-          imageData: imageData ? 'provided' : 'not_provided',
-          mockResult: true
-        }
+    // Call external Python API for facial recognition
+    const result = await facialRecognitionService.detectFace({
+      imageData,
+      cameraId,
+      timestamp,
+      metadata: {
+        source: 'kiosk',
+        timestamp: new Date().toISOString()
       }
     })
 
+    // Store detection event in database
+    await facialRecognitionService.storeDetectionEvent(cameraId, result)
+
+    // Return the result
     return NextResponse.json({
-      success: true,
+      success: result.success,
       status: result.status,
       clientId: result.clientId,
       confidence: result.confidence,
@@ -66,7 +57,8 @@ export async function POST(request: NextRequest) {
       { 
         success: false, 
         error: 'Error interno del servidor',
-        status: 'error'
+        status: 'error',
+        message: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )
@@ -75,7 +67,7 @@ export async function POST(request: NextRequest) {
 
 function getStatusMessage(status: string): string {
   switch (status) {
-    case 'recognized':
+    case 'matched':
       return 'Cliente identificado exitosamente'
     case 'new_face':
       return 'Nueva cara detectada - registro requerido'
@@ -93,12 +85,26 @@ function getStatusMessage(status: string): string {
  * Información sobre el endpoint de detección
  */
 export async function GET() {
-  return NextResponse.json({
-    endpoint: '/api/kiosk/detect',
-    method: 'POST',
-    description: 'Detección facial para kiosco',
-    status: 'operational',
-    note: 'Implementación stub - requiere integración con servicio de reconocimiento facial'
-  })
+  try {
+    // Check health of external API
+    const health = await facialRecognitionService.getHealth()
+    
+    return NextResponse.json({
+      endpoint: '/api/kiosk/detect',
+      method: 'POST',
+      description: 'Detección facial para kiosco - Integrado con API Python/ESP32',
+      status: 'operational',
+      externalApi: health.status,
+      version: health.version || 'unknown'
+    })
+  } catch (error) {
+    return NextResponse.json({
+      endpoint: '/api/kiosk/detect',
+      method: 'POST',
+      description: 'Detección facial para kiosco',
+      status: 'error',
+      externalApi: 'unavailable',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    })
+  }
 }
-

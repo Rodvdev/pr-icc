@@ -28,6 +28,7 @@ export default function KioskHomePage() {
   const [isScanning, setIsScanning] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
   const [hasCamera, setHasCamera] = useState(true)
+  const [showPrivacyMore, setShowPrivacyMore] = useState(false)
 
   // Simular detección facial (en producción, esto se conectaría a la API real)
   const startFacialDetection = async () => {
@@ -45,16 +46,29 @@ export default function KioskHomePage() {
         await videoRef.current.play()
       }
 
-      // Simular proceso de detección (2-3 segundos)
-      await new Promise(resolve => setTimeout(resolve, 2500))
+      // Capturar imagen del video
+      await new Promise(resolve => setTimeout(resolve, 1000)) // Esperar 1 segundo para que la cámara estabilice
+      
+      let imageData = ''
+      if (videoRef.current) {
+        const canvas = document.createElement('canvas')
+        canvas.width = videoRef.current.videoWidth
+        canvas.height = videoRef.current.videoHeight
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(videoRef.current, 0, 0)
+          imageData = canvas.toDataURL('image/jpeg', 0.8)
+        }
+      }
 
-      // Llamar a la API de detección (stub por ahora)
+      // Llamar a la API de detección con la imagen capturada
       const response = await fetch('/api/kiosk/detect', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           cameraId: 'kiosk-001',
-          timestamp: new Date().toISOString() 
+          timestamp: new Date().toISOString(),
+          imageData: imageData
         })
       })
 
@@ -214,6 +228,27 @@ export default function KioskHomePage() {
                 </Button>
               )}
             </div>
+
+            {/* Cuando no se usa reconocimiento, ofrecer opción de preguntas en el panel izquierdo */}
+            {detectionStatus === 'idle' && (
+              <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-100">
+                <div className="text-center space-y-3">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-purple-100 flex items-center justify-center">
+                    <Clock className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900">Solo Tengo Preguntas</h3>
+                  <p className="text-gray-600">Obtén respuestas rápidas o inicia un chat</p>
+                </div>
+                <div className="grid grid-cols-2 gap-3 mt-4">
+                  <Link href="/kiosk/chat" className="block">
+                    <Button className="w-full h-12" variant="outline">Ver Preguntas Frecuentes</Button>
+                  </Link>
+                  <Link href="/kiosk/chat" className="block">
+                    <Button className="w-full h-12" variant="secondary">Iniciar Chat</Button>
+                  </Link>
+                </div>
+              </Card>
+            )}
           </Card>
 
           {/* Opciones manuales */}
@@ -252,38 +287,70 @@ export default function KioskHomePage() {
               </Link>
             </Card>
 
-            <Card className="p-8 space-y-4 hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-purple-50 to-pink-50">
-              <Link href="/kiosk/chat" className="block space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full bg-purple-100 flex items-center justify-center">
-                  <Clock className="w-8 h-8 text-purple-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 text-center">
-                  Solo Tengo Preguntas
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Chatea con nuestro asistente virtual sin necesidad de registrarte
-                </p>
-                <Button className="w-full h-12" variant="secondary">
-                  Iniciar Chat
-                </Button>
-              </Link>
-            </Card>
+            {detectionStatus !== 'idle' && (
+              <Card className="p-8 space-y-4 hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-purple-50 to-pink-50">
+                <Link href="/kiosk/chat" className="block space-y-4">
+                  <div className="w-16 h-16 mx-auto rounded-full bg-purple-100 flex items-center justify-center">
+                    <Clock className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <h3 className="text-xl font-bold text-gray-900 text-center">
+                    Solo Tengo Preguntas
+                  </h3>
+                  <p className="text-gray-600 text-center">
+                    Chatea con nuestro asistente virtual sin necesidad de registrarte
+                  </p>
+                  <Button className="w-full h-12" variant="secondary">
+                    Iniciar Chat
+                  </Button>
+                </Link>
+              </Card>
+            )}
           </div>
         </div>
 
+        {/* Acceso discreto a Privacidad */}
+        <div className="text-right">
+          <a href="#privacidad" className="text-xs text-gray-500 underline">Privacidad</a>
+        </div>
+
         {/* Información adicional */}
-        <Card className="p-6 bg-blue-50 border-blue-200">
+        <Card id="privacidad" className="p-6 bg-blue-50 border-blue-200">
           <div className="flex items-start space-x-4">
             <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
               <AlertCircle className="w-5 h-5 text-blue-600" />
             </div>
             <div className="flex-1 space-y-2">
               <h4 className="font-semibold text-gray-900">Información de Privacidad</h4>
-              <p className="text-sm text-gray-700">
-                Tu imagen facial se utiliza únicamente para identificación y se almacena de forma segura 
-                según las normativas de protección de datos. Puedes desactivar esta función en cualquier 
-                momento desde tu perfil.
-              </p>
+              {!showPrivacyMore ? (
+                <div className="text-sm text-gray-700">
+                  <p className="truncate">
+                    Tu imagen facial se utiliza únicamente para identificación y se almacena de forma segura según las normativas vigentes.
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs text-blue-600 underline mt-1"
+                    onClick={() => setShowPrivacyMore(true)}
+                  >
+                    Ver más
+                  </button>
+                </div>
+              ) : (
+                <div className="text-sm text-gray-700 space-y-1">
+                  <p>
+                    Tu imagen facial se utiliza únicamente para identificación y se almacena de forma segura según las normativas de protección de datos.
+                  </p>
+                  <p>
+                    Puedes desactivar esta función en cualquier momento desde tu perfil.
+                  </p>
+                  <button
+                    type="button"
+                    className="text-xs text-blue-600 underline"
+                    onClick={() => setShowPrivacyMore(false)}
+                  >
+                    Ver menos
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </Card>

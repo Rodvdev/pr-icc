@@ -1,249 +1,270 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Search, Plus, Edit, Trash2, CheckCircle } from "lucide-react"
-import type { FAQ, QAPair } from "@prisma/client"
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { Separator } from "@/components/ui/separator"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { Search, Plus, Save, X, Eye, CheckCircle } from "lucide-react"
+
+type FAQ = {
+  id: string
+  title: string
+  answer: string
+  category: string | null
+  status: "DRAFT" | "PUBLISHED"
+  updatedAt: string
+}
 
 export default function FAQsPage() {
   const [faqs, setFaqs] = useState<FAQ[]>([])
-  const [qaPairs, setQaPairs] = useState<QAPair[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searchQuery, setSearchQuery] = useState("")
+  const [search, setSearch] = useState("")
+  const [selected, setSelected] = useState<FAQ | null>(null)
+  const [open, setOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [form, setForm] = useState({ title: "", answer: "", category: "General", status: "DRAFT" as "DRAFT" | "PUBLISHED" })
 
   useEffect(() => {
-    fetchData()
+    fetchFaqs()
   }, [])
 
-  const fetchData = async () => {
+  const fetchFaqs = async () => {
     try {
-      setLoading(true)
-      const [faqsRes, qaRes] = await Promise.all([
-        fetch("/api/faqs"),
-        fetch("/api/qa")
-      ])
-      
-      const [faqsData, qaData] = await Promise.all([
-        faqsRes.json(),
-        qaRes.json()
-      ])
-      
-      if (faqsData.success) setFaqs(faqsData.data)
-      if (qaData.success) setQaPairs(qaData.data)
-    } catch (error) {
-      console.error("Error fetching data:", error)
-    } finally {
-      setLoading(false)
+      const res = await fetch("/api/faqs")
+      const data = await res.json()
+      if (data.success) setFaqs(data.data)
+    } catch {
+      // noop
     }
   }
 
-  const handlePublish = async (id: string) => {
+  const filtered = useMemo(() =>
+    faqs.filter(f =>
+      f.title.toLowerCase().includes(search.toLowerCase()) ||
+      f.answer.toLowerCase().includes(search.toLowerCase())
+    ), [faqs, search]
+  )
+
+  const openEditor = (faq?: FAQ) => {
+    const f = faq ?? null
+    setSelected(f)
+    setForm({
+      title: f?.title ?? "",
+      answer: f?.answer ?? "",
+      category: f?.category ?? "General",
+      status: f?.status ?? "DRAFT",
+    })
+    setOpen(true)
+  }
+
+  const saveFAQ = async () => {
+    if (!form.title.trim()) return
+    if (!form.answer.trim()) return
+    setSaving(true)
     try {
-      const response = await fetch(`/api/faqs/${id}/publish`, {
-        method: "POST"
+      const isNew = !selected
+      const url = isNew ? "/api/faqs" : `/api/faqs/${selected!.id}`
+      const method = isNew ? "POST" : "PUT"
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: form.title, answer: form.answer, category: form.category, status: form.status })
       })
-      
-      if (response.ok) {
-        fetchData()
+      if (res.ok) {
+        await fetchFaqs()
+        setOpen(false)
       }
-    } catch (error) {
-      console.error("Error publishing FAQ:", error)
+    } finally {
+      setSaving(false)
     }
   }
 
-  const filteredFaqs = faqs.filter(faq =>
-    faq.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    faq.answer.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const publishFAQ = async (id: string) => {
+    try {
+      const res = await fetch(`/api/faqs/${id}/publish`, { method: "POST" })
+      if (res.ok) fetchFaqs()
+    } catch {
+      // noop
+    }
+  }
 
-  const filteredQAs = qaPairs.filter(qa =>
-    qa.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    qa.answer.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const preview = selected ?? filtered[0] ?? null
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Base de Conocimiento</h1>
-          <p className="text-gray-600 mt-1">
-            Gestiona FAQs y dataset para el chatbot
-          </p>
+          <h1 className="text-3xl font-bold text-gray-900">FAQs</h1>
+          <p className="text-gray-600 mt-1">Preguntas frecuentes para kiosko/cliente</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            Refrescar Dataset
-          </Button>
-          <Button>
+        <div className="flex items-center gap-2">
+          <div className="relative w-72">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Buscar por título o contenido..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Button onClick={() => openEditor()}>
             <Plus className="mr-2 h-4 w-4" />
-            Nueva FAQ
+            Crear
           </Button>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <Card className="lg:col-span-7 xl:col-span-8">
           <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{faqs.length}</div>
-            <p className="text-sm text-gray-600">Total FAQs</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-green-600">
-              {faqs.filter(f => f.status === "PUBLISHED").length}
-            </div>
-            <p className="text-sm text-gray-600">Publicadas</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold text-yellow-600">
-              {faqs.filter(f => f.status === "DRAFT").length}
-            </div>
-            <p className="text-sm text-gray-600">Borradores</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-2xl font-bold">{qaPairs.length}</div>
-            <p className="text-sm text-gray-600">Pares QA</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-        <Input
-          placeholder="Buscar en la base de conocimiento..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {/* Content Tabs */}
-      <Tabs defaultValue="faqs" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="faqs">FAQs ({faqs.length})</TabsTrigger>
-          <TabsTrigger value="qa">Pares QA ({qaPairs.length})</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="faqs" className="space-y-4">
-          {loading ? (
-            <div className="text-center py-12 text-gray-500">Cargando...</div>
-          ) : filteredFaqs.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No se encontraron FAQs
-            </div>
-          ) : (
-            filteredFaqs.map((faq) => (
-              <Card key={faq.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold">{faq.title}</h3>
-                        <Badge variant={
-                          faq.status === "PUBLISHED" ? "default" :
-                          faq.status === "DRAFT" ? "secondary" :
-                          "outline"
-                        }>
-                          {faq.status}
-                        </Badge>
-                        {faq.tags.length > 0 && (
-                          <div className="flex gap-1">
-                            {faq.tags.slice(0, 3).map((tag, i) => (
-                              <Badge key={i} variant="outline" className="text-xs">
-                                {tag}
-                              </Badge>
-                            ))}
-                          </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Pregunta</TableHead>
+                  <TableHead>Categoría</TableHead>
+                  <TableHead>Estado</TableHead>
+                  <TableHead>Última edición</TableHead>
+                  <TableHead className="w-[1%]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8 text-gray-500">Sin resultados</TableCell>
+                  </TableRow>
+                ) : filtered.map(f => (
+                  <TableRow key={f.id} className="cursor-pointer" onClick={() => setSelected(f)}>
+                    <TableCell className="font-medium">{f.title}</TableCell>
+                    <TableCell>{f.category || "General"}</TableCell>
+                    <TableCell>
+                      <span className={
+                        "px-2 py-1 rounded text-xs font-medium " +
+                        (f.status === "PUBLISHED" ? "bg-green-50 text-green-700" : "bg-yellow-50 text-yellow-700")
+                      }>
+                        {f.status === "PUBLISHED" ? "Publicada" : "Borrador"}
+                      </span>
+                    </TableCell>
+                    <TableCell>{new Date(f.updatedAt).toLocaleString()}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-2">
+                        {f.status === "DRAFT" && (
+                          <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); publishFAQ(f.id) }}>
+                            <CheckCircle className="h-4 w-4 mr-1" /> Publicar
+                          </Button>
                         )}
+                        <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); openEditor(f) }}>Editar</Button>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">
-                        {faq.answer}
-                      </p>
-                      {faq.tags.length > 0 && (
-                        <div className="flex flex-wrap gap-1 mt-2">
-                          {faq.tags.map((tag) => (
-                            <Badge key={tag} variant="secondary" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex gap-2 ml-4">
-                      {faq.status === "DRAFT" && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handlePublish(faq.id)}
-                        >
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Publicar
-                        </Button>
-                      )}
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </TabsContent>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
 
-        <TabsContent value="qa" className="space-y-4">
-          {loading ? (
-            <div className="text-center py-12 text-gray-500">Cargando...</div>
-          ) : filteredQAs.length === 0 ? (
-            <div className="text-center py-12 text-gray-500">
-              No se encontraron pares QA
+        <Card className="lg:col-span-5 xl:col-span-4">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 text-gray-500" />
+                <span className="text-sm text-gray-600">Preview (kiosko/cliente)</span>
+              </div>
             </div>
-          ) : (
-            filteredQAs.map((qa) => (
-              <Card key={qa.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="pt-6">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 space-y-2">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold">{qa.question}</h3>
-                        <Badge variant={qa.isActive ? "default" : "secondary"}>
-                          {qa.isActive ? "Activo" : "Inactivo"}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-gray-600">
-                        {qa.answer}
-                      </p>
-                    </div>
-                    <div className="flex gap-2 ml-4">
-                      <Button size="sm" variant="outline">
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button size="sm" variant="outline">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
-          )}
-        </TabsContent>
-      </Tabs>
+            {preview ? (
+              <div className="space-y-2">
+                <div className="text-base font-semibold text-gray-900">{preview.title}</div>
+                <div className="text-xs text-gray-500">Categoría: {preview.category || "General"}</div>
+                <Separator className="my-2" />
+                <div className="prose prose-sm max-w-none text-gray-800 whitespace-pre-wrap">
+                  {preview.answer}
+                </div>
+              </div>
+            ) : (
+              <div className="text-gray-500 text-sm">Selecciona una FAQ para ver su vista previa.</div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Editor Panel */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-xl p-0">
+          <SheetHeader className="px-6 pt-6 pb-2">
+            <SheetTitle>{selected ? "Editar FAQ" : "Crear FAQ"}</SheetTitle>
+          </SheetHeader>
+          <Separator />
+          <div className="p-6 space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Título</label>
+              <Input
+                value={form.title}
+                onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+                aria-invalid={!form.title.trim()}
+              />
+              {!form.title.trim() && (
+                <p className="text-xs text-red-600 mt-1">Ingresa un título.</p>
+              )}
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Respuesta</label>
+              <Textarea
+                value={form.answer}
+                onChange={(e) => setForm(f => ({ ...f, answer: e.target.value }))}
+                rows={10}
+                aria-invalid={!form.answer.trim()}
+              />
+              {!form.answer.trim() && (
+                <p className="text-xs text-red-600 mt-1">Ingresa una respuesta.</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Categoría</label>
+                <Select value={form.category} onValueChange={(v) => setForm(f => ({ ...f, category: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecciona categoría" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="General">General</SelectItem>
+                    <SelectItem value="Cuentas">Cuentas</SelectItem>
+                    <SelectItem value="Tarjetas">Tarjetas</SelectItem>
+                    <SelectItem value="Préstamos">Préstamos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                <Select value={form.status} onValueChange={(v: "DRAFT" | "PUBLISHED") => setForm(f => ({ ...f, status: v }))}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="DRAFT">Borrador</SelectItem>
+                    <SelectItem value="PUBLISHED">Publicada</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+          <Separator />
+          <SheetFooter className="p-4 border-t bg-white sticky bottom-0">
+            <div className="flex w-full justify-end gap-2">
+              <Button variant="outline" onClick={() => setOpen(false)}>
+                <X className="mr-2 h-4 w-4" />
+                Cancelar
+              </Button>
+              <Button onClick={saveFAQ} disabled={saving || !form.title.trim() || !form.answer.trim()}>
+                <Save className="mr-2 h-4 w-4" />
+                Guardar
+              </Button>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }

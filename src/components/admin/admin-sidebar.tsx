@@ -4,26 +4,26 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
-  LayoutDashboard,
-  Users,
-  Building2,
-  Camera,
   MessageSquare,
   BarChart3,
-  FileText,
   Settings,
   Menu,
   X,
-  UserPlus
+  Users
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
 const navigation = [
   {
-    name: "Dashboard",
-    href: "/admin",
-    icon: LayoutDashboard,
+    name: "FAQs",
+    href: "/admin/faqs",
+    icon: MessageSquare,
+  },
+  {
+    name: "Chatbot",
+    href: "/admin/chatbot",
+    icon: MessageSquare,
   },
   {
     name: "Clientes",
@@ -31,34 +31,9 @@ const navigation = [
     icon: Users,
   },
   {
-    name: "Registros",
-    href: "/admin/registrations",
-    icon: UserPlus,
-  },
-  {
-    name: "Sucursales",
-    href: "/admin/branches",
-    icon: Building2,
-  },
-  {
-    name: "Cámaras",
-    href: "/admin/cameras",
-    icon: Camera,
-  },
-  {
-    name: "FAQs / Dataset",
-    href: "/admin/faqs",
-    icon: MessageSquare,
-  },
-  {
     name: "Métricas",
     href: "/admin/metrics",
     icon: BarChart3,
-  },
-  {
-    name: "Auditoría",
-    href: "/admin/audit",
-    icon: FileText,
   },
   {
     name: "Configuración",

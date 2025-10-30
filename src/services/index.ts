@@ -9,6 +9,7 @@ export { branchService, BranchService } from './branch.service'
 export { faqService, FAQService } from './faq.service'
 export { cameraService, CameraService } from './camera.service'
 export { visitService, VisitService } from './visit.service'
+export { facialRecognitionService, FacialRecognitionService } from './facial-recognition.service'
 
 // Re-export types for convenience
 export type {
@@ -43,4 +44,10 @@ export type {
   UpdateVisitData,
   VisitSearchParams
 } from './visit.service'
+
+export type {
+  FacialRecognitionResult,
+  FacialRegistrationData,
+  FacialDetectionData
+} from './facial-recognition.service'
 

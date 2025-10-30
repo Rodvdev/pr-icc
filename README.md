@@ -33,6 +33,10 @@ DATABASE_URL="postgresql://username:password@localhost:5432/banking_agent_db"
 NEXTAUTH_URL="http://localhost:3005"
 NEXTAUTH_SECRET="your-secret-key-here"
 
+# Facial Recognition API (Optional)
+# URL for the external Python facial recognition service
+NEXT_PUBLIC_FACIAL_API_URL="http://localhost:5001/api"
+
 # Optional: Add your own secret key
 # Generate one with: openssl rand -base64 32
 ```

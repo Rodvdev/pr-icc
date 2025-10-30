@@ -4,7 +4,6 @@ import { ClientSidebar } from "@/components/client/client-sidebar"
 import { ClientHeader } from "@/components/client/client-header"
 import { ChatProvider } from "@/contexts/chat-context"
 import { ChatSidebarWrapper } from "@/components/chatbot/chat-sidebar-wrapper"
-import { ChatToggleButton } from "@/components/chatbot/chat-toggle-button"
 
 export default function ClientLayout({
   children,
@@ -31,9 +30,6 @@ export default function ClientLayout({
             </div>
           </main>
         </div>
-
-        {/* Chatbot Toggle Button */}
-        <ChatToggleButton />
 
         {/* Chatbot Sidebar */}
         <ChatSidebarWrapper userType="client" />

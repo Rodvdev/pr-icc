@@ -1,5 +1,73 @@
 "use client"
 
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { Button } from "@/components/ui/button"
+import Link from "next/link"
+import { ChatToggleButton } from "@/components/chatbot/chat-toggle-button"
+
+export default function ClientBranchLandingPage() {
+  return (
+    <div className="space-y-8">
+      {/* Welcome */}
+      <Card>
+        <CardHeader className="pb-4">
+          <CardTitle className="text-2xl">Bienvenido</CardTitle>
+          <CardDescription>
+            Atención rápida para clientes en sucursal. ¿En qué podemos ayudarte?
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <p className="text-gray-700">
+              Explora las opciones más comunes o habla con nuestro asistente para recibir ayuda inmediata.
+            </p>
+            {/* Prominent chatbot button at the same visual level as FAQs */}
+            <div className="flex items-center gap-3">
+              <ChatToggleButton />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* FAQs */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-xl">Preguntas frecuentes</CardTitle>
+          <CardDescription>Información clave para tu visita</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="faq-modulos">
+              <AccordionTrigger className="text-left">¿Qué puedo hacer en los módulos?</AccordionTrigger>
+              <AccordionContent>
+                Realiza apertura de cuenta, actualización de datos y consultas rápidas.{' '}
+                <Link href="/client/help" className="underline">Ver detalles</Link>.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="faq-ventanilla">
+              <AccordionTrigger className="text-left">¿Qué puedo hacer en ventanilla?</AccordionTrigger>
+              <AccordionContent>
+                Depósitos, retiros, pagos y operaciones en efectivo.{' '}
+                <Link href="/client/help" className="underline">Ver detalles</Link>.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="faq-prestamo">
+              <AccordionTrigger className="text-left">¿Qué documentos necesito para un préstamo?</AccordionTrigger>
+              <AccordionContent>
+                DNI vigente, sustento de ingresos y recibo de servicios.{' '}
+                <Link href="/client/documents" className="underline">Lista completa</Link>.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+"use client"
+
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
