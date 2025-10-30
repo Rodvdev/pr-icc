@@ -5,7 +5,7 @@
  * Features: Auto-reconnection, healthchecks, retries, backoff, idempotency, event queues
  */
 
-import axios, { AxiosInstance, AxiosError } from 'axios'
+import axios, { AxiosInstance } from 'axios'
 import { EventEmitter } from 'events'
 import { prisma } from '@/lib/prisma'
 
@@ -72,7 +72,7 @@ export interface RetryStrategy {
 
 export class DeviceIntegrationService extends EventEmitter {
   private devices: Map<string, DeviceConfig> = new Map()
-  private connections: Map<string, any> = new Map() // Protocol-specific connection objects
+  private connections: Map<string, unknown> = new Map() // Protocol-specific connection objects
   private healthChecks: Map<string, NodeJS.Timeout> = new Map()
   private reconnectTimers: Map<string, NodeJS.Timeout> = new Map()
   private messageQueue: Map<string, DeviceMessage[]> = new Map() // Pending messages per device

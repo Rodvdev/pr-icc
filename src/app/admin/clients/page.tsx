@@ -120,10 +120,6 @@ export default function ClientsPage() {
       {/* Resultados */}
       <Card>
         <CardContent className="pt-6">
-
-      {/* Table */}
-      <Card>
-        <CardContent className="pt-6">
           {loading ? (
             <div className="text-center py-8 text-gray-500">Cargando...</div>
           ) : (
@@ -166,8 +162,6 @@ export default function ClientsPage() {
           )}
         </CardContent>
       </Card>
-
-      
     </div>
   )
 }

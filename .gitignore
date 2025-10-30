@@ -17,6 +17,12 @@
 /.next/
 /out/
 
+/.documentation/
+.documentation/
+.documentation/**
+.documentation
+
+
 # production
 /build
 

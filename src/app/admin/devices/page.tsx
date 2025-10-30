@@ -339,7 +339,7 @@ export default function DevicesPage() {
             <Plug className="w-16 h-16 text-gray-400 mx-auto mb-4" />
             <h3 className="text-xl font-bold text-gray-900 mb-2">No Devices Found</h3>
             <p className="text-gray-600 mb-6">
-              Click "Initialize Demo" to set up a demo device and test the integration system.
+              Click &quot;Initialize Demo&quot; to set up a demo device and test the integration system.
             </p>
             <Button onClick={initializeDemo} disabled={initializing}>
               {initializing ? 'Initializing...' : 'Initialize Demo Device'}

@@ -1,5 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { MessageSquare } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { TrendingUp, TrendingDown } from "lucide-react"
 import { faqService } from "@/services"
 import { prisma } from "@/lib/prisma"
 

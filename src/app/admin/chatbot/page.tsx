@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent } from "@/components/ui/card"
-import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetFooter, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { Separator } from "@/components/ui/separator"
 import { Search, Plus, Save, X, MessageSquare } from "lucide-react"
 
@@ -36,7 +36,7 @@ export default function ChatbotAdminPage() {
       const res = await fetch("/api/qa")
       const data = await res.json()
       if (data.success) {
-        const mapped: Intent[] = data.data.map((q: any) => ({
+        const mapped: Intent[] = data.data.map((q: { id: string; question: string; answer: string; updatedAt: string }) => ({
           id: q.id,
           question: q.question,
           answer: q.answer,
@@ -44,7 +44,7 @@ export default function ChatbotAdminPage() {
         }))
         setIntents(mapped)
       }
-    } catch (e) {
+    } catch {
       // noop
     }
   }

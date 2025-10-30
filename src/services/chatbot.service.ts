@@ -328,7 +328,7 @@ export class ChatbotService {
           actor: 'CLIENT',
           content: message,
           intent: null,
-          metadata: metadata as any
+          metadata: metadata as Record<string, unknown>
         }
       }),
       prisma.chatMessage.create({
@@ -337,7 +337,7 @@ export class ChatbotService {
           actor: 'BOT',
           content: response,
           intent,
-          metadata: metadata as any
+          metadata: metadata as Record<string, unknown>
         }
       })
     ])

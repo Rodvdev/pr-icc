@@ -405,7 +405,7 @@ export default function KioskRegisterPage() {
                     <div className="absolute inset-0 flex items-center justify-center text-white">
                       <div className="text-center space-y-4">
                         <Camera className="w-16 h-16 mx-auto opacity-50" />
-                        <p>Presiona "Activar Cámara" y luego "Capturar Foto"</p>
+                        <p>Presiona &quot;Activar Cámara&quot; y luego &quot;Capturar Foto&quot;</p>
                       </div>
                     </div>
                   ) : (

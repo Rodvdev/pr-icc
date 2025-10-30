@@ -137,7 +137,7 @@ export const getFacialStats = async (): Promise<FacialAPIStats> => {
 /**
  * Update system configuration
  */
-export const updateFacialConfig = async (config: FacialAPIConfig): Promise<any> => {
+export const updateFacialConfig = async (config: FacialAPIConfig): Promise<unknown> => {
   try {
     const response = await facialAPI.put('/config', config)
     return response.data
