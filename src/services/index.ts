@@ -9,9 +9,10 @@ export { branchService, BranchService } from './branch.service'
 export { faqService, FAQService } from './faq.service'
 export { cameraService, CameraService } from './camera.service'
 export { visitService, VisitService } from './visit.service'
-export { facialRecognitionService, FacialRecognitionService } from './facial-recognition.service'
-export { deviceIntegrationService, DeviceIntegrationService } from './device-integration.service'
 export { chatbotService, ChatbotService } from './chatbot.service'
+// Disabled for deployment:
+// export { facialRecognitionService, FacialRecognitionService } from './facial-recognition.service'
+// export { deviceIntegrationService, DeviceIntegrationService } from './device-integration.service'
 
 // Re-export types for convenience
 export type {
@@ -47,19 +48,20 @@ export type {
   VisitSearchParams
 } from './visit.service'
 
-export type {
-  FacialRecognitionResult,
-  FacialRegistrationData,
-  FacialDetectionData
-} from './facial-recognition.service'
+// Disabled for deployment:
+// export type {
+//   FacialRecognitionResult,
+//   FacialRegistrationData,
+//   FacialDetectionData
+// } from './facial-recognition.service'
 
-export type {
-  DeviceConfig,
-  DeviceHealth,
-  DeviceMessage,
-  DeviceProtocol,
-  DeviceConnectionStatus
-} from './device-integration.service'
+// export type {
+//   DeviceConfig,
+//   DeviceHealth,
+//   DeviceMessage,
+//   DeviceProtocol,
+//   DeviceConnectionStatus
+// } from './device-integration.service'
 
 export type {
   RelevantContext,
