@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -31,49 +32,54 @@ interface ClientData {
  * - Estado de visitas y documentos pendientes
  */
 function KioskWelcomeContent() {
-  const searchParams = useSearchParams()
   const router = useRouter()
-  const clientId = searchParams.get('clientId')
+  const { data: session, status } = useSession()
   
   const [client, setClient] = useState<ClientData | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  // Get client ID from session
+  const clientId = session?.user ? (session.user as { id?: string })?.id : null
+
   useEffect(() => {
-    if (!clientId) {
-      router.push('/kiosk')
+    // Check if user is authenticated
+    if (status === "unauthenticated") {
+      router.push('/kiosk/login')
       return
     }
 
-    const fetchClientData = async () => {
-      try {
-        const response = await fetch(`/api/kiosk/client/${clientId}`)
-        
-        if (!response.ok) {
-          throw new Error('No se pudo cargar la información del cliente')
+    if (status === "authenticated" && clientId) {
+      const fetchClientData = async () => {
+        try {
+          const response = await fetch(`/api/kiosk/client/${clientId}`)
+          
+          if (!response.ok) {
+            throw new Error('No se pudo cargar la información del cliente')
+          }
+
+          const data = await response.json()
+          setClient(data)
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'Error desconocido')
+        } finally {
+          setIsLoading(false)
         }
-
-        const data = await response.json()
-        setClient(data)
-      } catch (err) {
-        setError(err instanceof Error ? err.message : 'Error desconocido')
-      } finally {
-        setIsLoading(false)
       }
-    }
 
-    fetchClientData()
-  }, [clientId, router])
+      fetchClientData()
+    }
+  }, [session, status, clientId, router])
 
   const handleStartVisit = async (purpose: string) => {
-    if (!clientId) return
+    if (!client?.id) return
 
     try {
       const response = await fetch('/api/kiosk/visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientId,
+          clientId: client.id,
           purpose
         })
       })

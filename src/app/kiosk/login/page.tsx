@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -37,22 +38,24 @@ export default function KioskLoginPage() {
     setErrors({})
 
     try {
-      const response = await fetch('/api/auth/client/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dni, password })
+      // Use NextAuth signIn with client-credentials provider
+      const result = await signIn("client-credentials", {
+        dni,
+        password,
+        redirect: false,
+        callbackUrl: "/kiosk/welcome",
       })
 
-      const data = await response.json()
-
-      if (response.ok) {
-        // Redirigir a la página de bienvenida con el clientId
-        router.push(`/kiosk/welcome?clientId=${data.client.id}`)
-      } else {
-        setErrors({ submit: data.message || 'Credenciales inválidas' })
+      if (result?.error) {
+        setErrors({ submit: "Credenciales inválidas. Verifica tu DNI y contraseña." })
+      } else if (result?.ok) {
+        // Redirect to welcome page - client info will come from session
+        router.push("/kiosk/welcome")
+        router.refresh()
       }
-    } catch {
-      setErrors({ submit: 'Error de conexión. Intenta de nuevo.' })
+    } catch (error) {
+      console.error("Login error:", error)
+      setErrors({ submit: "Error de conexión. Intenta de nuevo." })
     } finally {
       setIsLoading(false)
     }
