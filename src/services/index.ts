@@ -11,6 +11,7 @@ export { cameraService, CameraService } from './camera.service'
 export { visitService, VisitService } from './visit.service'
 export { facialRecognitionService, FacialRecognitionService } from './facial-recognition.service'
 export { deviceIntegrationService, DeviceIntegrationService } from './device-integration.service'
+export { chatbotService, ChatbotService } from './chatbot.service'
 
 // Re-export types for convenience
 export type {
@@ -59,4 +60,12 @@ export type {
   DeviceProtocol,
   DeviceConnectionStatus
 } from './device-integration.service'
+
+export type {
+  RelevantContext,
+  ChatResponse,
+  ChatInteractionMetadata,
+  ChatMetrics,
+  SaveChatInteractionResult
+} from './chatbot.service'
 

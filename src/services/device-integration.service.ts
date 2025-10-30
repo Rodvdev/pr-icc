@@ -8,6 +8,7 @@
 import axios, { AxiosInstance } from 'axios'
 import { EventEmitter } from 'events'
 import { prisma } from '@/lib/prisma'
+import { Prisma } from '@prisma/client'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -689,7 +690,7 @@ export class DeviceIntegrationService extends EventEmitter {
           id: message.id,
           deviceId: message.deviceId,
           type: message.type,
-          payload: message.payload,
+          payload: message.payload as Prisma.InputJsonValue,
           success,
           retryCount: message.retryCount,
           timestamp: message.timestamp
