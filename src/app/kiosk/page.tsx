@@ -94,9 +94,11 @@ export default function KioskHomePage() {
       <div className="space-y-8">
         {/* Bienvenida */}
         <div className="text-center space-y-3">
+          <h1 className="text-3xl font-bold text-gray-900">
+            Bienvenido
+          </h1>
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
-            Sistema de identificación automática. Por favor, posiciónate frente a la cámara 
-            o selecciona una opción para continuar.
+            Usa tu rostro para identificarte de forma rápida y segura
           </p>
         </div>
 
@@ -236,60 +238,35 @@ export default function KioskHomePage() {
             )}
           </Card>
 
-          {/* Opciones manuales */}
-          <div className="space-y-6">
-            <Card className="p-8 space-y-4 hover:shadow-lg transition-shadow cursor-pointer">
-              <Link href="/kiosk/register" className="block space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full bg-green-100 flex items-center justify-center">
-                  <UserPlus className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 text-center">
-                  Soy Nuevo Cliente
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Regístrate en nuestro sistema para disfrutar de atención rápida y personalizada
-                </p>
-                <Button className="w-full h-12" variant="default">
-                  Comenzar Registro
+          {/* Opciones alternativas - más discretas */}
+          <div className="space-y-4">
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500 text-center mb-4">¿No tienes cuenta?</p>
+              
+              <Link href="/kiosk/register" className="block">
+                <Button className="w-full h-12" variant="outline" size="lg">
+                  <UserPlus className="w-4 h-4 mr-2" />
+                  Registrarme como nuevo cliente
                 </Button>
               </Link>
-            </Card>
-
-            <Card className="p-8 space-y-4 hover:shadow-lg transition-shadow cursor-pointer">
-              <Link href="/kiosk/login" className="block space-y-4">
-                <div className="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center">
-                  <User className="w-8 h-8 text-blue-600" />
-                </div>
-                <h3 className="text-xl font-bold text-gray-900 text-center">
-                  Ya Tengo Cuenta
-                </h3>
-                <p className="text-gray-600 text-center">
-                  Inicia sesión con tu DNI y contraseña para acceder a nuestros servicios
-                </p>
-                <Button className="w-full h-12" variant="outline">
-                  Iniciar Sesión
+              
+              <Link href="/kiosk/login" className="block">
+                <Button className="w-full h-12" variant="ghost" size="lg">
+                  <User className="w-4 h-4 mr-2" />
+                  Iniciar sesión con DNI
                 </Button>
               </Link>
-            </Card>
-
-            {detectionStatus !== 'idle' && (
-              <Card className="p-8 space-y-4 hover:shadow-lg transition-shadow cursor-pointer bg-gradient-to-br from-purple-50 to-pink-50">
-                <Link href="/kiosk/chat" className="block space-y-4">
-                  <div className="w-16 h-16 mx-auto rounded-full bg-purple-100 flex items-center justify-center">
-                    <Clock className="w-8 h-8 text-purple-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900 text-center">
-                    Solo Tengo Preguntas
-                  </h3>
-                  <p className="text-gray-600 text-center">
-                    Chatea con nuestro asistente virtual sin necesidad de registrarte
-                  </p>
-                  <Button className="w-full h-12" variant="secondary">
-                    Iniciar Chat
-                  </Button>
-                </Link>
-              </Card>
-            )}
+            </div>
+            
+            <div className="pt-4 border-t">
+              <Link href="/kiosk/chat" className="block">
+                <Button className="w-full h-12" variant="ghost" size="lg">
+                  <Clock className="w-4 h-4 mr-2" />
+                  Solo quiero hacer una pregunta
+                </Button>
+              </Link>
+            </div>
+            </div>
           </div>
         </div>
 
