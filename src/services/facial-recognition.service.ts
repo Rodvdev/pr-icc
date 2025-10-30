@@ -7,7 +7,6 @@
 
 import axios, { AxiosInstance } from 'axios'
 import { prisma } from '@/lib/prisma'
-import { clientService } from './client.service'
 
 // ========== TYPE DEFINITIONS ==========
 
@@ -245,32 +244,32 @@ export class FacialRecognitionService {
   /**
    * Create or update facial profile for a client
    */
-  async createFacialProfile(
-    clientId: string,
-    result: FacialRecognitionResult,
-    imageUrl?: string
-  ): Promise<void> {
-    try {
-      if (!result.faceId && !result.embedding) {
-        throw new Error('No face ID or embedding provided')
-      }
+  // async createFacialProfile(
+  //   clientId: string,
+  //   result: FacialRecognitionResult,
+  //   imageUrl?: string
+  // ): Promise<void> {
+  //   try {
+  //     if (!result.faceId && !result.embedding) {
+  //       throw new Error('No face ID or embedding provided')
+  //     }
 
-      await prisma.facialProfile.create({
-        data: {
-          clientId,
-          provider: 'external-python-api',
-          providerFaceId: result.faceId || undefined,
-          version: '1.0',
-          embedding: result.embedding || null,
-          imageUrl: imageUrl,
-          isActive: true
-        }
-      })
-    } catch (error) {
-      console.error('Error creating facial profile:', error)
-      throw error
-    }
-  }
+  //     await prisma.facialProfile.create({
+  //       data: {
+  //         clientId,
+  //         provider: 'external-python-api',
+  //         providerFaceId: result.faceId || undefined,
+  //         version: '1.0',
+  //         embedding: result.embedding || null,
+  //         imageUrl: imageUrl,
+  //         isActive: true
+  //       }
+  //     })
+  //   } catch (error) {
+  //     console.error('Error creating facial profile:', error)
+  //     throw error
+  //   }
+  // }
 
   /**
    * Map our facial recognition status to Prisma DetectionStatus enum
