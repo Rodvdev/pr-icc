@@ -1,11 +1,12 @@
 import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
-import { PrismaAdapter } from "@next-auth/prisma-adapter"
+// import { PrismaAdapter } from "@next-auth/prisma-adapter" // Not needed with JWT strategy
 import { prisma } from "./prisma"
 import bcrypt from "bcryptjs"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  // Don't use PrismaAdapter with JWT strategy and credentials provider
+  // adapter: PrismaAdapter(prisma),
   secret: process.env.NEXTAUTH_SECRET,
   debug: process.env.NODE_ENV === 'development',
   providers: [
