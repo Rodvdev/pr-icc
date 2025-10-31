@@ -216,26 +216,6 @@ export default function KioskHomePage() {
               )}
             </div>
 
-            {/* Cuando no se usa reconocimiento, ofrecer opción de preguntas en el panel izquierdo */}
-            {detectionStatus === 'idle' && (
-              <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-100">
-                <div className="text-center space-y-3">
-                  <div className="w-12 h-12 mx-auto rounded-full bg-purple-100 flex items-center justify-center">
-                    <Clock className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <h3 className="text-xl font-bold text-gray-900">Solo Tengo Preguntas</h3>
-                  <p className="text-gray-600">Obtén respuestas rápidas o inicia un chat</p>
-                </div>
-                <div className="grid grid-cols-2 gap-3 mt-4">
-                  <Link href="/kiosk/chat" className="block">
-                    <Button className="w-full h-12" variant="outline">Ver Preguntas Frecuentes</Button>
-                  </Link>
-                  <Link href="/kiosk/chat" className="block">
-                    <Button className="w-full h-12" variant="secondary">Iniciar Chat</Button>
-                  </Link>
-                </div>
-              </Card>
-            )}
           </Card>
 
           {/* Opciones alternativas - más discretas */}
@@ -265,7 +245,6 @@ export default function KioskHomePage() {
                   Solo quiero hacer una pregunta
                 </Button>
               </Link>
-            </div>
             </div>
           </div>
         </div>
