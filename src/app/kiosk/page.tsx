@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
-import { Camera, User, UserPlus, Clock, CheckCircle2, AlertCircle } from "lucide-react"
+import { Camera, CheckCircle2, AlertCircle } from "lucide-react"
 import Link from "next/link"
 
 type DetectionStatus = 'idle' | 'detecting' | 'recognized' | 'unknown' | 'error'
@@ -102,23 +102,23 @@ export default function KioskHomePage() {
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Panel de detección facial */}
-          <Card className="p-8 space-y-6">
+        <div className="space-y-6">
+          {/* Panel de detección facial - más prominente */}
+          <Card className="p-8 space-y-6 max-w-3xl mx-auto">
             <div className="text-center space-y-3">
-              <div className="w-16 h-16 mx-auto rounded-full bg-blue-100 flex items-center justify-center">
-                <Camera className="w-8 h-8 text-blue-600" />
+              <div className="w-20 h-20 mx-auto rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-lg">
+                <Camera className="w-10 h-10 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-gray-900">
-                Identificación Facial
+              <h2 className="text-3xl font-bold text-gray-900">
+                Reconocimiento Facial
               </h2>
-              <p className="text-gray-600">
-                Reconocimiento automático para clientes registrados
+              <p className="text-lg text-gray-600">
+                Acércate a la cámara para identificarte automáticamente
               </p>
             </div>
 
             {/* Video preview (oculto durante detección) */}
-            <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden">
+            <div className="relative aspect-video bg-gray-900 rounded-xl overflow-hidden shadow-2xl">
               {detectionStatus === 'idle' && (
                 <div className="absolute inset-0 flex items-center justify-center">
                   <div className="text-center text-white space-y-2">
@@ -218,32 +218,20 @@ export default function KioskHomePage() {
 
           </Card>
 
-          {/* Opciones alternativas - más discretas */}
-          <div className="space-y-4">
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-500 text-center mb-4">¿No tienes cuenta?</p>
-              
-              <Link href="/kiosk/register" className="block">
-                <Button className="w-full h-12" variant="outline" size="lg">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Registrarme como nuevo cliente
-                </Button>
+          {/* Opciones alternativas - discretas en la parte inferior */}
+          <div className="text-center space-y-2 max-w-2xl mx-auto">
+            <p className="text-xs text-gray-400 mb-3">¿Prefieres otra opción?</p>
+            <div className="flex justify-center gap-4 flex-wrap">
+              <Link href="/kiosk/register" className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                Registrarse
               </Link>
-              
-              <Link href="/kiosk/login" className="block">
-                <Button className="w-full h-12" variant="ghost" size="lg">
-                  <User className="w-4 h-4 mr-2" />
-                  Iniciar sesión con DNI
-                </Button>
+              <span className="text-gray-300">•</span>
+              <Link href="/kiosk/login" className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                Iniciar sesión con DNI
               </Link>
-            </div>
-            
-            <div className="pt-4 border-t">
-              <Link href="/kiosk/chat" className="block">
-                <Button className="w-full h-12" variant="ghost" size="lg">
-                  <Clock className="w-4 h-4 mr-2" />
-                  Solo quiero hacer una pregunta
-                </Button>
+              <span className="text-gray-300">•</span>
+              <Link href="/kiosk/chat" className="text-sm text-blue-600 hover:text-blue-700 hover:underline">
+                Hacer una pregunta
               </Link>
             </div>
           </div>
