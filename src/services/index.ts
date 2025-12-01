@@ -10,8 +10,8 @@ export { faqService, FAQService } from './faq.service'
 export { cameraService, CameraService } from './camera.service'
 export { visitService, VisitService } from './visit.service'
 export { chatbotService, ChatbotService } from './chatbot.service'
+export { facialRecognitionService, FacialRecognitionService } from './facial-recognition.service'
 // Disabled for deployment:
-// export { facialRecognitionService, FacialRecognitionService } from './facial-recognition.service'
 // export { deviceIntegrationService, DeviceIntegrationService } from './device-integration.service'
 
 // Re-export types for convenience
@@ -48,12 +48,13 @@ export type {
   VisitSearchParams
 } from './visit.service'
 
-// Disabled for deployment:
-// export type {
-//   FacialRecognitionResult,
-//   FacialRegistrationData,
-//   FacialDetectionData
-// } from './facial-recognition.service'
+export type {
+  FacialProfile,
+  DetectionEvent,
+  CreateFacialProfileData,
+  RegisterUserToPythonAPI,
+  DetectionEventData
+} from './facial-recognition.service'
 
 // export type {
 //   DeviceConfig,
