@@ -26,9 +26,11 @@ export default function KioskHomePage() {
   const [detectionStatus, setDetectionStatus] = useState<DetectionStatus>('idle')
   const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null)
   const [isScanning, setIsScanning] = useState(false)
-  const videoRef = useRef<HTMLVideoElement>(null)
+  const mediaRef = useRef<HTMLVideoElement | HTMLImageElement>(null)
   const [hasCamera, setHasCamera] = useState(true)
   const [showPrivacyMore, setShowPrivacyMore] = useState(false)
+  // URL del stream de la ESP32-CAM (usar NEXT_PUBLIC_ para que esté disponible en cliente)
+  const ESP32_STREAM_URL = process.env.NEXT_PUBLIC_ESP32_STREAM_URL ?? 'http://192.168.122.116:81/stream'
 
   // Simular detección facial (en producción, esto se conectaría a la API real)
   const startFacialDetection = async () => {
@@ -37,33 +39,59 @@ export default function KioskHomePage() {
     setDetectionResult(null)
 
     try {
-      // Intentar acceder a la cámara
-      if (videoRef.current) {
+    // Si hay una URL de stream de ESP32, usarla como vista previa (imagen MJPEG)
+    if (ESP32_STREAM_URL) {
+      setIsScanning(true)
+      setDetectionStatus('detecting')
+      // Dejamos que la imagen cargue un poco
+      await new Promise(resolve => setTimeout(resolve, 800))
+
+      let imageData = ''
+      if (mediaRef.current) {
+        const canvas = document.createElement('canvas')
+        // soporte para <video> o <img>
+        const width = 'videoWidth' in mediaRef.current ? (mediaRef.current as HTMLVideoElement).videoWidth : (mediaRef.current as HTMLImageElement).naturalWidth
+        const height = 'videoHeight' in mediaRef.current ? (mediaRef.current as HTMLVideoElement).videoHeight : (mediaRef.current as HTMLImageElement).naturalHeight
+        canvas.width = width || 640
+        canvas.height = height || 480
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          try {
+            ctx.drawImage(mediaRef.current as any, 0, 0, canvas.width, canvas.height)
+            imageData = canvas.toDataURL('image/jpeg', 0.8)
+          } catch (err) {
+            console.warn('No se pudo capturar imagen desde el stream HTTP:', err)
+          }
+        }
+      }
+      // En este punto imageData puede usarse para enviar a la API de reconocimiento
+    } else {
+      // Intentar acceder a la cámara local (fallback)
+      if (mediaRef.current && 'srcObject' in mediaRef.current) {
         const stream = await navigator.mediaDevices.getUserMedia({ 
           video: { facingMode: 'user' } 
         })
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
+        ;(mediaRef.current as HTMLVideoElement).srcObject = stream
+        await (mediaRef.current as HTMLVideoElement).play()
       }
 
       // Capturar imagen del video
       await new Promise(resolve => setTimeout(resolve, 1000)) // Esperar 1 segundo para que la cámara estabilice
       
       let imageData = ''
-      if (videoRef.current) {
+      if (mediaRef.current && 'videoWidth' in mediaRef.current) {
         const canvas = document.createElement('canvas')
-        canvas.width = videoRef.current.videoWidth
-        canvas.height = videoRef.current.videoHeight
+        canvas.width = (mediaRef.current as HTMLVideoElement).videoWidth
+        canvas.height = (mediaRef.current as HTMLVideoElement).videoHeight
         const ctx = canvas.getContext('2d')
         if (ctx) {
-          ctx.drawImage(videoRef.current, 0, 0)
+          ctx.drawImage(mediaRef.current as HTMLVideoElement, 0, 0)
           imageData = canvas.toDataURL('image/jpeg', 0.8)
         }
       }
+      
+    }
 
-      // API de detección facial deshabilitada temporalmente
-      // TODO: Re-enable when facial recognition service is available
-      throw new Error('Detección facial temporalmente deshabilitada. Por favor, use el registro manual.')
     } catch (error) {
       console.error('Error en detección facial:', error)
       setDetectionStatus('error')
@@ -75,9 +103,9 @@ export default function KioskHomePage() {
     } finally {
       setIsScanning(false)
       
-      // Detener stream de video
-      if (videoRef.current?.srcObject) {
-        const stream = videoRef.current.srcObject as MediaStream
+      // Detener stream de video (solo aplica para getUserMedia)
+      if (mediaRef.current && 'srcObject' in mediaRef.current && (mediaRef.current as HTMLVideoElement).srcObject) {
+        const stream = (mediaRef.current as HTMLVideoElement).srcObject as MediaStream
         stream.getTracks().forEach(track => track.stop())
       }
     }
@@ -171,14 +199,32 @@ export default function KioskHomePage() {
                 </div>
               )}
 
-              <video 
-                ref={videoRef}
-                className="w-full h-full object-cover"
-                style={{ display: isScanning ? 'block' : 'none' }}
-                autoPlay
-                playsInline
-                muted
-              />
+              {ESP32_STREAM_URL ? (
+                <img
+                  ref={mediaRef as any}
+                  src={ESP32_STREAM_URL}
+                  crossOrigin="anonymous"
+                  onLoad={() => console.debug('ESP32 stream image loaded')}
+                  onError={() => {
+                    console.error('No se pudo cargar el stream ESP32 (img onError)')
+                    setDetectionStatus('error')
+                    setDetectionResult({ status: 'error', message: 'No se pudo cargar el stream ESP32. Revisa la URL y CORS.' })
+                    setHasCamera(false)
+                    setIsScanning(false)
+                  }}
+                  className="w-full h-full object-cover"
+                  style={{ display: isScanning ? 'block' : 'none' }}
+                />
+              ) : (
+                <video
+                  ref={mediaRef as any}
+                  className="w-full h-full object-cover"
+                  style={{ display: isScanning ? 'block' : 'none' }}
+                  autoPlay
+                  playsInline
+                  muted
+                />
+              )}
             </div>
 
             {/* Botones de acción */}
