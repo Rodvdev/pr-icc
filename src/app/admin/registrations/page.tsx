@@ -46,9 +46,12 @@ export default function RegistrationsPage() {
   const fetchRequests = async () => {
     try {
       setLoading(true)
-      // TODO: Create API endpoint for registration requests
-      // For now using mock data
-      setRequests([])
+      const response = await fetch('/api/registrations')
+      const data = await response.json()
+      
+      if (data.success) {
+        setRequests(data.data)
+      }
     } catch (error) {
       console.error("Error fetching requests:", error)
     } finally {
@@ -61,8 +64,7 @@ export default function RegistrationsPage() {
 
     setActionLoading(true)
     try {
-      const endpoint = actionType === "approve" ? "activate" : "reject"
-      const response = await fetch(`/api/clients/${selectedRequest.client.id}/${endpoint}`, {
+      const response = await fetch(`/api/registrations/${selectedRequest.id}/${actionType}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ notes })
@@ -72,6 +74,11 @@ export default function RegistrationsPage() {
         fetchRequests()
         setDialogOpen(false)
         setNotes("")
+        setSelectedRequest(null)
+        setActionType(null)
+      } else {
+        const error = await response.json()
+        console.error("Error:", error)
       }
     } catch (error) {
       console.error("Error performing action:", error)

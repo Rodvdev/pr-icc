@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -56,7 +56,344 @@ export default function KioskRegisterPage() {
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
   const videoRef = useRef<HTMLVideoElement>(null)
+  const imgRef = useRef<HTMLImageElement>(null)
   const [isCameraActive, setIsCameraActive] = useState(false)
+  const [useESP32, setUseESP32] = useState(false)
+  const [esp32Reload, setEsp32Reload] = useState(0)
+  const overlayRef = useRef<HTMLCanvasElement>(null)
+  const offscreenRef = useRef<HTMLCanvasElement | null>(null)
+  const [faceApiReady, setFaceApiReady] = useState(false)
+  const detectionLoopRef = useRef<number | null>(null)
+  const [lastDetection, setLastDetection] = useState<{box: any; score: number} | null>(null)
+   const [savedEncodings, setSavedEncodings] = useState<number[][] | null>(null)
+    const ESP32_STREAM_URL = process.env.NEXT_PUBLIC_ESP32_STREAM_URL ?? 'http://192.168.122.116:81/stream'
+    const ESP32_IP = process.env.NEXT_PUBLIC_ESP32_IP ?? '192.168.122.116'
+    const ESP32_FLASH_ON_URL = process.env.NEXT_PUBLIC_ESP32_FLASH_ON ?? `http://${ESP32_IP}/control?var=led_intensity&val=255`
+    const ESP32_FLASH_OFF_URL = process.env.NEXT_PUBLIC_ESP32_FLASH_OFF ?? `http://${ESP32_IP}/control?var=led_intensity&val=0`
+    // debug tick
+    // console.debug('detection loop tick', { useESP32, faceApiReady })
+
+    useEffect(() => {
+    // Si existe la URL del ESP32, por defecto usarla en el paso foto
+    if (ESP32_STREAM_URL) {
+      setUseESP32(true)
+    }
+  }, [ESP32_STREAM_URL])
+
+
+  // detection loop drawing overlay on top of ESP32 image
+  useEffect(() => {
+    let cancelled = false
+    async function loadFaceApi() {
+      if (!useESP32) return
+      try {
+        // Load TensorFlow.js if not present
+        if (!(window as any).tf) {
+          await new Promise<void>((resolve, reject) => {
+            const s = document.createElement('script')
+            s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0'
+            s.async = true
+            s.onload = () => resolve()
+            s.onerror = reject
+            document.head.appendChild(s)
+          })
+        }
+
+        // Load @vladmandic/face-api if not present
+        if (!(window as any).FaceAPI && !(window as any).faceapi) {
+          await new Promise<void>((resolve, reject) => {
+            const s = document.createElement('script')
+            s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js'
+            s.async = true
+            s.onload = () => {
+              console.log('face-api loaded, FaceAPI =', (window as any).FaceAPI)
+              resolve()
+            }
+            s.onerror = (e) => {
+              console.error('Failed to load face-api library', e)
+              reject(e)
+            }
+            document.head.appendChild(s)
+          })
+        }
+
+        // Detect which global the library exposed
+        const globalFaceApi = (window as any).FaceAPI || (window as any).faceapi || (window as any)['face-api'] || null
+        if (!globalFaceApi) {
+          console.error('face-api loaded but no global export found on window (FaceAPI / faceapi)')
+          return
+        }
+        // normalize to a single alias so the rest of the code can use it
+        ;(window as any).__faceapi = globalFaceApi
+        
+        // Load the face detection models from CDN
+        console.log('Loading face-api models...')
+        try {
+          const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/'
+          await globalFaceApi.nets.tinyFaceDetector.load(MODEL_URL)
+          await globalFaceApi.nets.faceLandmark68Net.load(MODEL_URL)
+          await globalFaceApi.nets.faceRecognitionNet.load(MODEL_URL)
+          console.log('✅ face-api models loaded')
+        } catch (e) {
+          console.error('Failed to load face-api models:', e)
+          return
+        }
+        
+        console.log('✅ face-api ready (alias window.__faceapi)')
+        if (!cancelled) setFaceApiReady(true)
+      } catch (e) {
+        console.error('Failed to initialize face-api', e)
+      }
+    }
+    loadFaceApi()
+    return () => { cancelled = true }
+  }, [useESP32])
+
+  // detection loop drawing overlay on top of ESP32 image (runs continuously)
+  useEffect(() => {
+    let rafId: number | null = null
+    let detectionCount = 0
+    const doLoop = async () => {
+      try {
+        if (!useESP32 || !faceApiReady) {
+          setLastDetection(null)
+          return
+        }
+        const FaceAPI = (window as any).__faceapi || (window as any).FaceAPI || (window as any).faceapi || null
+        if (!FaceAPI) {
+          console.warn('FaceAPI not available')
+          setLastDetection(null)
+          return
+        }
+        const img = imgRef.current
+        const canvas = overlayRef.current
+        if (!img || !canvas) return
+        const displaySize = { width: img.clientWidth, height: img.clientHeight }
+        canvas.width = displaySize.width
+        canvas.height = displaySize.height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) return
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+        // Try to detect on the <img> directly
+        try {
+          detectionCount++
+          if (detectionCount % 30 === 0) {
+            console.debug('Detection attempts:', detectionCount, 'img ready:', img.complete, 'size:', img.clientWidth, 'x', img.clientHeight)
+          }
+          
+          const detection = await FaceAPI.detectSingleFace(img, new FaceAPI.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.3 })).withFaceLandmarks().withFaceDescriptor()
+          
+          if (detection && detection.detection) {
+            const box = detection.detection.box
+            ctx.strokeStyle = 'rgba(0,255,0,0.9)'
+            ctx.lineWidth = 2
+            ctx.strokeRect(box.x, box.y, box.width, box.height)
+            ctx.fillStyle = 'rgba(0,0,0,0.6)'
+            ctx.font = '14px sans-serif'
+            const score = (detection.detection.score || 0).toFixed(2)
+            ctx.fillText(`score: ${score}`, box.x, Math.max(14, box.y - 6))
+            setLastDetection({ box, score: detection.detection.score || 0 })
+          } else {
+            setLastDetection(null)
+          }
+        } catch (e) {
+          if (detectionCount % 60 === 0) {
+            console.warn('Detection error (periodically logged):', String(e).substring(0, 100))
+          }
+          setLastDetection(null)
+        }
+      } catch (e) {
+        console.error('Detection loop outer error:', e)
+      } finally {
+        rafId = requestAnimationFrame(doLoop)
+        detectionLoopRef.current = rafId
+      }
+    }
+
+    if (useESP32 && faceApiReady) doLoop()
+
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId)
+      detectionLoopRef.current = null
+    }
+  }, [useESP32, faceApiReady, esp32Reload])
+
+  // Take N samples capturing descriptors from face-api and send to server
+  const takeSamplesAndRegister = async (samples = 3) => {
+    if (!faceApiReady) {
+      setErrors({ photoData: 'Modelo no cargado aún. Espera unos segundos.' })
+      return
+    }
+    const FaceAPI = (window as any).__faceapi || (window as any).FaceAPI || (window as any).faceapi || null
+    if (!FaceAPI) {
+      console.error('face-api no está disponible. window.__faceapi, FaceAPI, faceapi =', (window as any).__faceapi, (window as any).FaceAPI, (window as any).faceapi)
+      setErrors({ photoData: 'Librería de reconocimiento no cargada. Recarga la página.' })
+      return
+    }
+    const img = imgRef.current
+    if (!img) {
+      setErrors({ photoData: 'Stream ESP32 no disponible' })
+      return
+    }
+
+    setErrors({ photoData: 'Capturando 3 muestras...' }) // progress indicator
+    const collected: number[][] = []
+    const maxAttemptsPerSample = 10
+    // helper to toggle physical flash on the ESP32 (best-effort)
+    const flashOn = async () => {
+      try {
+        await fetch(ESP32_FLASH_ON_URL, { method: 'GET' })
+        console.log('ESP32 flash ON requested')
+      } catch (e) {
+        console.warn('ESP32 flash ON failed', e)
+      }
+    }
+    const flashOff = async () => {
+      try {
+        await fetch(ESP32_FLASH_OFF_URL, { method: 'GET' })
+        console.log('ESP32 flash OFF requested')
+      } catch (e) {
+        console.warn('ESP32 flash OFF failed', e)
+      }
+    }
+
+    const PER_SAMPLE_TIMEOUT_MS = 12_000 // max time per sample before aborting (12s)
+    const SCORE_THRESHOLD = 0.35 // lower threshold for capturing in variable lighting
+    for (let s = 0; s < samples; s++) {
+      const sampleStart = Date.now()
+      let attempts = 0
+      let got = false
+      while (attempts < maxAttemptsPerSample && !got) {
+        attempts++
+        try {
+          // Try to turn on the ESP32 flash briefly before capturing (best-effort)
+          await flashOn()
+          // small delay to allow LED to light up (match register_auto.py DELAY_FLASH)
+          await new Promise(r => setTimeout(r, 150))
+          // debug: image properties
+          try {
+            console.debug('Attempt', attempts, 'img.complete', img.complete, 'natural', img.naturalWidth, img.naturalHeight, 'client', img.clientWidth, img.clientHeight)
+          } catch (e) {
+            console.warn('Could not read img properties', e)
+          }
+
+          const detection = await FaceAPI.detectSingleFace(img, new FaceAPI.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: SCORE_THRESHOLD })).withFaceLandmarks().withFaceDescriptor()
+          // switch flash off after capture attempt
+          await flashOff()
+          console.debug('Detection result:', detection)
+          if (detection && detection.descriptor) {
+            collected.push(Array.from(detection.descriptor))
+            got = true
+            setErrors({ photoData: `Capturando: ${s + 1}/${samples} muestras` })
+            console.log(`✅ Muestra ${s + 1}/${samples} capturada`)
+          } else {
+            // wait a bit and retry; also attempt server snapshot debug once every 3 attempts
+            console.debug('No detection on live img, will retry after delay')
+            // check per-sample timeout
+            const elapsed = Date.now() - sampleStart
+            if (elapsed > PER_SAMPLE_TIMEOUT_MS) {
+              console.warn(`Timeout capturando muestra ${s + 1} after ${elapsed}ms`)
+              try { await flashOff() } catch (_) {}
+              setErrors({ photoData: `Tiempo de espera agotado para la muestra ${s + 1}. Reintenta.` })
+              return
+            }
+            if (attempts % 3 === 0) {
+              try {
+                console.debug('Attempting server snapshot for debug')
+                const snapResp = await fetch('/api/esp32/snapshot')
+                if (snapResp.ok) {
+                  const blob = await snapResp.blob()
+                  const url = URL.createObjectURL(blob)
+                  const testImg = new Image()
+                  await new Promise<void>((resolve, reject) => {
+                    testImg.onload = () => resolve()
+                    testImg.onerror = (e) => reject(e)
+                    testImg.src = url
+                  })
+                  const snapDetection = await FaceAPI.detectSingleFace(testImg, new FaceAPI.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: SCORE_THRESHOLD })).withFaceLandmarks().withFaceDescriptor()
+                  console.debug('Snapshot detection:', snapDetection)
+                  URL.revokeObjectURL(url)
+                } else {
+                  console.warn('Snapshot fetch failed', snapResp.status)
+                }
+              } catch (e) {
+                console.warn('Snapshot debug failed', e)
+              }
+            }
+            await new Promise(r => setTimeout(r, 250))
+          }
+        } catch (e) {
+          console.error('Detection error:', e)
+          try { await flashOff() } catch (_) {}
+          // if browser errors (CORS / canvas tainting), surface user-helpful message
+          if (String(e).toLowerCase().includes('security') || String(e).toLowerCase().includes('tainted')) {
+            setErrors({ photoData: 'Error de seguridad al acceder a los píxeles de la imagen (CORS). Comprueba la configuración del ESP32.' })
+            return
+          }
+          await new Promise(r => setTimeout(r, 250))
+        }
+      }
+      if (!got) {
+        setErrors({ photoData: `No se detectó rostro para la muestra ${s + 1}. Intenta de nuevo.` })
+        return
+      }
+      // small delay between captures
+      await new Promise(r => setTimeout(r, 300))
+    }
+
+    console.log(`✅ Se capturaron ${samples} muestras. Enviando al servidor...`)
+
+    // Send to server to append embeddings
+    try {
+      setErrors({ photoData: 'Guardando embeddings en el servidor...' })
+      const resp = await fetch('/api/esp32/register-embeddings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: formData.name || 'SinNombre', encodings: collected })
+      })
+      const data = await resp.json().catch(() => ({}))
+      if (!resp.ok || !data.ok) {
+        setErrors({ photoData: data.message || 'Error al guardar los embeddings' })
+        return
+      }
+      // Save returned encodings into component state for later persistence into DB
+      try {
+        if (Array.isArray(data.encodings) && data.encodings.length > 0) {
+          // ensure arrays of numbers
+          const encs = data.encodings.map((e: any) => Array.isArray(e) ? e.map((n: any) => Number(n)) : [])
+          setSavedEncodings(encs)
+        }
+      } catch (e) {
+        console.warn('Could not parse encodings from response', e)
+      }
+      console.log('✅ Embeddings guardados en el servidor')
+      // set first captured image as the photoData (preview)
+      // draw the current displayed image to canvas and take dataURL
+      const canvas = document.createElement('canvas')
+      const width = img.naturalWidth || img.clientWidth || 640
+      const height = img.naturalHeight || img.clientHeight || 480
+      canvas.width = width
+      canvas.height = height
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+        updateField('photoData', dataUrl)
+      }
+      // Clear the progress message
+      if (errors.photoData?.startsWith('Capturando') || errors.photoData?.startsWith('Guardando')) {
+        setErrors(prev => {
+          const copy = { ...prev }
+          delete copy.photoData
+          return copy
+        })
+      }
+    } catch (e) {
+      console.error('Server error:', e)
+      setErrors({ photoData: 'Fallo en la conexión al servidor' })
+    }
+  }
 
   const steps: Array<{ id: RegistrationStep; label: string; icon: typeof User }> = [
     { id: 'personal', label: 'Datos Personales', icon: User },
@@ -132,6 +469,8 @@ export default function KioskRegisterPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
+      // Ya hemos guardado los embeddings con takeSamplesAndRegister() -> /api/esp32/register-embeddings
+      // Ahora solo creamos la cuenta en la BD
       const response = await fetch('/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -142,6 +481,7 @@ export default function KioskRegisterPage() {
           phone: formData.phone,
           password: formData.password,
           photoData: formData.photoData,
+          encodings: savedEncodings || undefined
         })
       })
 
@@ -159,16 +499,20 @@ export default function KioskRegisterPage() {
   }
 
   const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream
-        await videoRef.current.play()
-        setIsCameraActive(true)
-      }
-    } catch {
-      setErrors({ photoData: 'No se pudo acceder a la cámara' })
+    // If ESP32 stream URL is configured, switch to ESP32 mode and force reload
+    if (ESP32_STREAM_URL) {
+      setUseESP32(true)
+      setErrors(prev => {
+        const copy = { ...prev }
+        delete copy.photoData
+        return copy
+      })
+      setEsp32Reload(r => r + 1)
+      return
     }
+
+    // Otherwise show instructive error (no webcam fallback allowed)
+    setErrors({ photoData: 'No hay URL de ESP32 configurada. Configure NEXT_PUBLIC_ESP32_STREAM_URL.' })
   }
 
   const stopCamera = () => {
@@ -182,9 +526,28 @@ export default function KioskRegisterPage() {
 
   const capturePhoto = async () => {
     try {
+      const canvas = document.createElement('canvas')
+
+      if (useESP32) {
+        // Capturar desde imagen MJPEG de la ESP32
+        const img = imgRef.current
+        if (!img) throw new Error('ESP32 image not available')
+        const width = img.naturalWidth || 640
+        const height = img.naturalHeight || 480
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        if (!ctx) throw new Error('No se pudo crear el contexto de imagen')
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.9)
+        updateField('photoData', dataUrl)
+        // No detener nada (ESP32 stream es remoto)
+        return
+      }
+
+      // Captura desde cámara local (video)
       if (!videoRef.current) return
       const video = videoRef.current
-      const canvas = document.createElement('canvas')
       canvas.width = video.videoWidth || 640
       canvas.height = video.videoHeight || 480
       const ctx = canvas.getContext('2d')
@@ -399,60 +762,101 @@ export default function KioskRegisterPage() {
 
               <div className="max-w-lg mx-auto space-y-6">
                 <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden relative">
-                  {isCameraActive ? (
-                    <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
-                  ) : !formData.photoData ? (
-                    <div className="absolute inset-0 flex items-center justify-center text-white">
-                      <div className="text-center space-y-4">
-                        <Camera className="w-16 h-16 mx-auto opacity-50" />
-                        <p>Presiona &quot;Activar Cámara&quot; y luego &quot;Capturar Foto&quot;</p>
+                    {/** Mostrar stream ESP32 si está seleccionado */}
+                    {useESP32 && ESP32_STREAM_URL ? (
+                      <div className="w-full h-full relative">
+                        <img
+                          ref={imgRef as any}
+                          src={`${ESP32_STREAM_URL}?r=${esp32Reload}`}
+                          crossOrigin="anonymous"
+                          className="w-full h-full object-cover"
+                          alt="ESP32 Stream"
+                        />
+                        {/* overlay canvas for drawing box/score (always visible when window active) */}
+                        <canvas
+                          ref={overlayRef as any}
+                          className="absolute left-0 top-0 w-full h-full pointer-events-none z-40"
+                          aria-hidden="true"
+                        />
+                        {/* small status badge showing detection state */}
+                        <div className="absolute right-2 top-2 z-50">
+                          <div className={`w-3 h-3 rounded-full ${lastDetection ? 'bg-green-400' : 'bg-gray-400'} shadow-md`} />
+                        </div>
                       </div>
+                    ) : isCameraActive ? (
+                      <video ref={videoRef} className="w-full h-full object-cover" autoPlay playsInline muted />
+                    ) : !formData.photoData ? (
+                      <div className="absolute inset-0 flex items-center justify-center text-white">
+                        <div className="text-center space-y-4">
+                          <Camera className="w-16 h-16 mx-auto opacity-50" />
+                          <p>Presiona &quot;Activar Cámara&quot; o selecciona la ESP32, luego &quot;Capturar Foto&quot;</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center bg-green-600">
+                        <div className="text-center text-white space-y-3">
+                          <CheckCircle2 className="w-16 h-16 mx-auto" />
+                          <p className="text-xl font-medium">¡Foto capturada!</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {!formData.photoData ? (
+                    <div className="grid grid-cols-2 gap-3">
+                      {useESP32 && ESP32_STREAM_URL ? (
+                        // Cuando usamos ESP32: botón para tomar 3 capturas y calcular embeddings
+                        <>
+                          <Button onClick={() => takeSamplesAndRegister(3)} className="h-14 text-lg" size="lg">
+                            <Camera className="w-5 h-5 mr-2" />
+                            Tomar capturas (ESP32)
+                          </Button>
+                        </>
+                      ) : (
+                        // Modo cámara local tradicional
+                        <>
+                          {!isCameraActive ? (
+                            <Button onClick={startCamera} className="h-14 text-lg" size="lg">
+                              Activar Cámara
+                            </Button>
+                          ) : (
+                            <Button onClick={capturePhoto} className="h-14 text-lg" size="lg">
+                              <Camera className="w-5 h-5 mr-2" />
+                              Capturar Foto
+                            </Button>
+                          )}
+                          {isCameraActive && (
+                            <Button onClick={stopCamera} variant="outline" className="h-14" size="lg">
+                              Cancelar
+                            </Button>
+                          )}
+                        </>
+                      )}
                     </div>
                   ) : (
-                    <div className="absolute inset-0 flex items-center justify-center bg-green-600">
-                      <div className="text-center text-white space-y-3">
-                        <CheckCircle2 className="w-16 h-16 mx-auto" />
-                        <p className="text-xl font-medium">¡Foto capturada!</p>
-                      </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <Button
+                        onClick={() => {
+                          updateField('photoData', '')
+                          // Reiniciar al modo ESP32 (siempre usamos ESP32)
+                          if (ESP32_STREAM_URL) {
+                            setUseESP32(true)
+                          }
+                        }}
+                        variant="outline"
+                        className="h-12"
+                      >
+                        Tomar Nueva Foto
+                      </Button>
+                      <Button onClick={() => setCurrentStep('review')} className="h-12">
+                        Continuar
+                      </Button>
                     </div>
                   )}
-                </div>
 
-                {!formData.photoData ? (
-                  <div className="grid grid-cols-2 gap-3">
-                    {!isCameraActive ? (
-                      <Button onClick={startCamera} className="h-14 text-lg" size="lg">
-                        Activar Cámara
-                      </Button>
-                    ) : (
-                      <Button onClick={capturePhoto} className="h-14 text-lg" size="lg">
-                        <Camera className="w-5 h-5 mr-2" />
-                        Capturar Foto
-                      </Button>
-                    )}
-                    {isCameraActive && (
-                      <Button onClick={stopCamera} variant="outline" className="h-14" size="lg">
-                        Cancelar
-                      </Button>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-3">
-                    <Button
-                      onClick={() => {
-                        updateField('photoData', '')
-                        startCamera()
-                      }}
-                      variant="outline"
-                      className="h-12"
-                    >
-                      Tomar Nueva Foto
-                    </Button>
-                    <Button onClick={() => setCurrentStep('review')} className="h-12">
-                      Continuar
-                    </Button>
-                  </div>
-                )}
+                  {errors.photoData && (
+                    <p className="text-sm text-red-500 mt-2">{errors.photoData}</p>
+                  )}
 
                 <Card className="p-4 bg-yellow-50 border-yellow-200">
                   <div className="flex items-start space-x-3">

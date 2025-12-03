@@ -140,6 +140,30 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // If encodings were provided in the registration flow, persist them as FacialProfile(s)
+    try {
+      const encodings = Array.isArray(body.encodings) ? body.encodings : null
+      if (encodings && encodings.length > 0) {
+        for (const e of encodings) {
+          const vec = Array.isArray(e) ? e.map((n: any) => Number(n)) : null
+          if (!vec || vec.length === 0) continue
+          await prisma.facialProfile.create({
+            data: {
+              clientId: client.id,
+              provider: 'local',
+              providerFaceId: null,
+              version: 'v1',
+              embedding: { vector: vec },
+              imageUrl: body.photoData || null,
+              isActive: true
+            }
+          })
+        }
+      }
+    } catch (err) {
+      console.error('Error saving facial profiles for new client:', err)
+    }
+
     // Audit log
     await audit({
       action: 'CLIENT_CREATED',

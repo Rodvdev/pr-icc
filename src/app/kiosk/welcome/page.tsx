@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, Suspense } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
@@ -39,27 +39,48 @@ function KioskWelcomeContent() {
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Get client ID from session
-  const clientId = session?.user ? (session.user as { id?: string })?.id : null
+  // Prefer clientId from URL query (when coming from recognition), fallback to session user id
+  const searchParams = useSearchParams()
+  const queryClientId = searchParams?.get('clientId') ?? null
+  const clientId = queryClientId ?? (session?.user ? (session.user as { id?: string })?.id : null)
 
   useEffect(() => {
     // Check if user is authenticated
-    if (status === "unauthenticated") {
+    if (status === "unauthenticated" && !queryClientId) {
+      // If there is no session AND no clientId passed in the query, redirect to login
       router.push('/kiosk/login')
       return
     }
 
-    if (status === "authenticated" && clientId) {
+    if ((status === "authenticated" && clientId) || queryClientId) {
       const fetchClientData = async () => {
         try {
           const response = await fetch(`/api/kiosk/client/${clientId}`)
-          
-          if (!response.ok) {
-            throw new Error('No se pudo cargar la información del cliente')
+          let data: any = null
+          try {
+            data = await response.json()
+          } catch (e) {
+            // JSON parse failed
+            throw new Error(`Failed to parse server response (${response.status})`)
           }
 
-          const data = await response.json()
-          setClient(data)
+          if (!response.ok) {
+            // Use message from server if provided
+            const msg = data?.message || `Server returned ${response.status}`
+            throw new Error(msg)
+          }
+
+          // Normalize shape: our API returns { ok: true, id, name, ... }
+          const clientData = {
+            id: data.id,
+            name: data.name ?? null,
+            email: data.email ?? null,
+            lastVisit: data.lastVisit ?? null,
+            pendingDocuments: data.pendingDocuments ?? 0,
+            upcomingAppointments: data.upcomingAppointments ?? 0
+          }
+
+          setClient(clientData)
         } catch (err) {
           setError(err instanceof Error ? err.message : 'Error desconocido')
         } finally {

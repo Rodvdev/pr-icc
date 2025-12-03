@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Camera, CheckCircle2, AlertCircle } from "lucide-react"
@@ -18,7 +18,7 @@ interface DetectionResult {
 
 /**
  * Página principal del kiosco
- * - Detección facial automática
+ * - Detección facial automático mediante servidor
  * - Reconocimiento de clientes existentes
  * - Opciones de registro para nuevos clientes
  */
@@ -27,14 +27,153 @@ export default function KioskHomePage() {
   const [detectionResult, setDetectionResult] = useState<DetectionResult | null>(null)
   const [isScanning, setIsScanning] = useState(false)
   const mediaRef = useRef<HTMLVideoElement | HTMLImageElement>(null)
+  const overlayRef = useRef<HTMLCanvasElement>(null)
   const [hasCamera, setHasCamera] = useState(true)
   const [showPrivacyMore, setShowPrivacyMore] = useState(false)
   const [streamError, setStreamError] = useState(false)
   const [streamRetryCount, setStreamRetryCount] = useState(0)
+  const [faceApiReady, setFaceApiReady] = useState(false)
+  const detectionLoopRef = useRef<number | null>(null)
+  const [lastDetection, setLastDetection] = useState<any>(null)
+  
   // URL del stream de la ESP32-CAM (usar NEXT_PUBLIC_ para que esté disponible en cliente)
   const ESP32_STREAM_URL = process.env.NEXT_PUBLIC_ESP32_STREAM_URL ?? 'http://192.168.122.116:81/stream'
 
-  // Simular detección facial (en producción, esto se conectaría a la API real)
+  // Cargar face-api y modelos
+  useEffect(() => {
+    const loadFaceApi = async () => {
+      try {
+        // Cargar TensorFlow.js
+        const tfScript = document.createElement('script')
+        tfScript.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0/dist/tf.min.js'
+        tfScript.async = true
+        
+        tfScript.onload = async () => {
+          // Cargar face-api
+          const faceApiScript = document.createElement('script')
+          faceApiScript.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js'
+          faceApiScript.async = true
+          
+          faceApiScript.onload = async () => {
+            try {
+              const globalFaceApi = (window as any).FaceAPI || (window as any).faceapi || (window as any).facapi
+              if (!globalFaceApi) {
+                console.error('❌ face-api no se cargó correctamente')
+                return
+              }
+              (window as any).__faceapi = globalFaceApi
+              
+              // Cargar modelos
+              const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/'
+              try {
+                await globalFaceApi.nets.tinyFaceDetector.load(MODEL_URL)
+                await globalFaceApi.nets.faceLandmark68Net.load(MODEL_URL)
+                await globalFaceApi.nets.faceRecognitionNet.load(MODEL_URL)
+                console.log('✅ face-api models cargados')
+                setFaceApiReady(true)
+              } catch (err) {
+                console.error('❌ Error al cargar modelos:', err)
+              }
+            } catch (err) {
+              console.error('❌ Error en face-api:', err)
+            }
+          }
+          document.head.appendChild(faceApiScript)
+        }
+        document.head.appendChild(tfScript)
+      } catch (err) {
+        console.error('❌ Error al cargar face-api:', err)
+      }
+    }
+
+    loadFaceApi()
+  }, [])
+
+  // Detection loop continuo
+  useEffect(() => {
+    if (!faceApiReady || !mediaRef.current || !overlayRef.current) return
+
+    const doLoop = async () => {
+      try {
+        const img = mediaRef.current as HTMLImageElement
+        if (!img || !img.src || img.naturalWidth === 0) {
+          detectionLoopRef.current = requestAnimationFrame(doLoop)
+          return
+        }
+
+        const FaceAPI = (window as any).FaceAPI || (window as any).faceapi || (window as any).facapi
+        if (!FaceAPI) {
+          detectionLoopRef.current = requestAnimationFrame(doLoop)
+          return
+        }
+
+        try {
+          const detection = await FaceAPI.detectSingleFace(
+            img,
+            new FaceAPI.TinyFaceDetectorOptions({
+              inputSize: 320,
+              scoreThreshold: 0.3
+            })
+          ).withFaceLandmarks().withFaceDescriptor()
+
+          if (detection) {
+            setLastDetection(detection)
+          }
+
+          // Dibujar en el canvas overlay
+          const canvas = overlayRef.current
+          if (!canvas) {
+            detectionLoopRef.current = requestAnimationFrame(doLoop)
+            return
+          }
+
+          const rect = img.getBoundingClientRect()
+          canvas.width = img.naturalWidth
+          canvas.height = img.naturalHeight
+          canvas.style.width = rect.width + 'px'
+          canvas.style.height = rect.height + 'px'
+
+          const ctx = canvas.getContext('2d')
+          if (!ctx) {
+            detectionLoopRef.current = requestAnimationFrame(doLoop)
+            return
+          }
+
+          // Limpiar
+          ctx.clearRect(0, 0, canvas.width, canvas.height)
+
+          if (detection) {
+            const { x, y, width, height } = detection.detection.box
+            const score = Math.round(detection.detection.score * 100)
+
+            // Dibujar caja verde
+            ctx.strokeStyle = '#22c55e'
+            ctx.lineWidth = 3
+            ctx.strokeRect(x, y, width, height)
+
+            // Dibujar score
+            ctx.fillStyle = '#22c55e'
+            ctx.font = 'bold 16px Arial'
+            ctx.fillText(`Detectado ${score}%`, x, y - 10)
+          }
+        } catch (err) {
+          // Ignorar errores de detección silenciosamente
+        }
+      } catch (err) {
+        console.error('Error en detection loop:', err)
+      }
+
+      detectionLoopRef.current = requestAnimationFrame(doLoop)
+    }
+
+    detectionLoopRef.current = requestAnimationFrame(doLoop)
+
+    return () => {
+      if (detectionLoopRef.current) {
+        cancelAnimationFrame(detectionLoopRef.current)
+      }
+    }
+  }, [faceApiReady])
   const startFacialDetection = async () => {
     setIsScanning(true)
     setDetectionStatus('detecting')
@@ -95,8 +234,49 @@ export default function KioskHomePage() {
               try {
                 ctx.drawImage(mediaRef.current as any, 0, 0, canvas.width, canvas.height)
                 const imageData = canvas.toDataURL('image/jpeg', 0.8)
-                // En este punto imageData puede usarse para enviar a la API de reconocimiento
-                console.debug('Imagen capturada desde stream ESP32')
+                console.debug('Imagen capturada desde stream ESP32, enviando a API...')
+                
+                // Enviar a API de reconocimiento
+                // Preferimos enviar el descriptor calculado en el loop (si existe)
+                const payload: any = {}
+                if (lastDetection && lastDetection.descriptor) {
+                  payload.descriptor = Array.from(lastDetection.descriptor)
+                } else {
+                  payload.image = imageData
+                }
+
+                const response = await fetch('/api/kiosk/recognize', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+                })
+                const result = await response.json()
+                console.debug('Resultado del reconocimiento:', result)
+                
+                if (result.ok) {
+                  if (result.recognized && result.clientName) {
+                    setDetectionStatus('recognized')
+                    setDetectionResult({
+                      status: 'recognized',
+                        clientId: result.clientId,
+                        clientName: result.clientName,
+                        confidence: result.confidence,
+                        message: `¡Bienvenido, ${result.clientName}!`
+                    })
+                  } else {
+                    setDetectionStatus('unknown')
+                    setDetectionResult({
+                      status: 'unknown',
+                      message: 'No te reconocemos aún'
+                    })
+                  }
+                } else {
+                  setDetectionStatus('error')
+                  setDetectionResult({
+                    status: 'error',
+                    message: result.message || 'Error en reconocimiento'
+                  })
+                }
               } catch (err) {
                 console.warn('No se pudo capturar imagen desde el stream HTTP:', err)
                 setStreamError(true)
@@ -108,36 +288,11 @@ export default function KioskHomePage() {
         }
       }
 
-      // Si no hay ESP32 stream o falló, usar cámara local como fallback
+      // No fallback to local webcam: detection only via ESP32 stream.
+      // If ESP32 stream is unavailable, we mark streamError and return an error.
       if (!ESP32_STREAM_URL || streamError) {
-        if (mediaRef.current && 'srcObject' in mediaRef.current) {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ 
-              video: { facingMode: 'user' } 
-            })
-            ;(mediaRef.current as HTMLVideoElement).srcObject = stream
-            await (mediaRef.current as HTMLVideoElement).play()
-
-            // Capturar imagen del video
-            await new Promise(resolve => setTimeout(resolve, 1000)) // Esperar 1 segundo para que la cámara estabilice
-            
-            let imageData = ''
-            if (mediaRef.current && 'videoWidth' in mediaRef.current) {
-              const canvas = document.createElement('canvas')
-              canvas.width = (mediaRef.current as HTMLVideoElement).videoWidth
-              canvas.height = (mediaRef.current as HTMLVideoElement).videoHeight
-              const ctx = canvas.getContext('2d')
-              if (ctx) {
-                ctx.drawImage(mediaRef.current as HTMLVideoElement, 0, 0)
-                imageData = canvas.toDataURL('image/jpeg', 0.8)
-                console.debug('Imagen capturada desde cámara local')
-              }
-            }
-          } catch (mediaError) {
-            console.warn('No se pudo acceder a la cámara local:', mediaError)
-            throw mediaError
-          }
-        }
+        setStreamError(true)
+        throw new Error('ESP32 stream not available')
       }
 
     } catch (error) {
@@ -151,11 +306,7 @@ export default function KioskHomePage() {
     } finally {
       setIsScanning(false)
       
-      // Detener stream de video (solo aplica para getUserMedia)
-      if (mediaRef.current && 'srcObject' in mediaRef.current && (mediaRef.current as HTMLVideoElement).srcObject) {
-        const stream = (mediaRef.current as HTMLVideoElement).srcObject as MediaStream
-        stream.getTracks().forEach(track => track.stop())
-      }
+      // No-op: we don't manage local webcam streams; ESP32 stream is remote and stays running.
     }
   }
 
@@ -254,54 +405,61 @@ export default function KioskHomePage() {
               )}
 
               {ESP32_STREAM_URL ? (
-                <img
-                  ref={mediaRef as any}
-                  src={streamRetryCount > 0 ? `${ESP32_STREAM_URL}?retry=${streamRetryCount}&t=${Date.now()}` : ESP32_STREAM_URL}
-                  crossOrigin="anonymous"
-                  onLoad={() => {
-                    console.debug('ESP32 stream image loaded')
-                    setStreamError(false)
-                    setStreamRetryCount(0)
-                  }}
-                  onError={(e) => {
-                    // Solo mostrar error si estamos escaneando activamente
-                    if (isScanning) {
-                      const retryLimit = 3
-                      if (streamRetryCount < retryLimit) {
-                        console.warn(`Intento ${streamRetryCount + 1} de cargar stream ESP32 falló, reintentando...`)
-                        setStreamRetryCount(prev => prev + 1)
-                        // Forzar recarga de la imagen después de un breve delay
-                        setTimeout(() => {
-                          if (mediaRef.current) {
-                            (mediaRef.current as HTMLImageElement).src = `${ESP32_STREAM_URL}?retry=${streamRetryCount + 1}&t=${Date.now()}`
-                          }
-                        }, 1000)
+                <>
+                  <img
+                    ref={mediaRef as any}
+                    src={streamRetryCount > 0 ? `${ESP32_STREAM_URL}?retry=${streamRetryCount}&t=${Date.now()}` : ESP32_STREAM_URL}
+                    crossOrigin="anonymous"
+                    onLoad={() => {
+                      console.debug('ESP32 stream image loaded')
+                      setStreamError(false)
+                      setStreamRetryCount(0)
+                    }}
+                    onError={(e) => {
+                      // Solo mostrar error si estamos escaneando activamente
+                      if (isScanning) {
+                        const retryLimit = 3
+                        if (streamRetryCount < retryLimit) {
+                          console.warn(`Intento ${streamRetryCount + 1} de cargar stream ESP32 falló, reintentando...`)
+                          setStreamRetryCount(prev => prev + 1)
+                          // Forzar recarga de la imagen después de un breve delay
+                          setTimeout(() => {
+                            if (mediaRef.current) {
+                              (mediaRef.current as HTMLImageElement).src = `${ESP32_STREAM_URL}?retry=${streamRetryCount + 1}&t=${Date.now()}`
+                            }
+                          }, 1000)
+                        } else {
+                          console.warn('No se pudo cargar el stream ESP32 después de varios intentos')
+                          setStreamError(true)
+                          setDetectionStatus('error')
+                          setDetectionResult({ 
+                            status: 'error', 
+                            message: 'No se pudo conectar con la cámara. Por favor, intenta usar el registro manual o verifica la conexión.' 
+                          })
+                          setHasCamera(false)
+                          setIsScanning(false)
+                        }
                       } else {
-                        console.warn('No se pudo cargar el stream ESP32 después de varios intentos')
+                        // Si no estamos escaneando, solo marcar el error silenciosamente
                         setStreamError(true)
-                        setDetectionStatus('error')
-                        setDetectionResult({ 
-                          status: 'error', 
-                          message: 'No se pudo conectar con la cámara. Por favor, intenta usar el registro manual o verifica la conexión.' 
-                        })
-                        setHasCamera(false)
-                        setIsScanning(false)
+                        console.debug('Stream ESP32 no disponible (carga silenciosa)')
                       }
-                    } else {
-                      // Si no estamos escaneando, solo marcar el error silenciosamente
-                      setStreamError(true)
-                      console.debug('Stream ESP32 no disponible (carga silenciosa)')
-                    }
-                  }}
-                  className="w-full h-full object-cover"
-                  style={{ display: isScanning || detectionStatus !== 'idle' ? 'block' : 'none' }}
-                  alt="Stream de cámara ESP32"
-                />
+                    }}
+                    className="w-full h-full object-cover"
+                    style={{ display: 'block' }}
+                    alt="Stream de cámara ESP32"
+                  />
+                  <canvas
+                    ref={overlayRef}
+                    className="absolute inset-0 w-full h-full"
+                    style={{ display: 'block', cursor: 'crosshair' }}
+                  />
+                </>
               ) : (
                 <video
                   ref={mediaRef as any}
                   className="w-full h-full object-cover"
-                  style={{ display: isScanning || detectionStatus !== 'idle' ? 'block' : 'none' }}
+                  style={{ display: 'block' }}
                   autoPlay
                   playsInline
                   muted
@@ -319,14 +477,48 @@ export default function KioskHomePage() {
                   size="lg"
                 >
                   <Camera className="w-5 h-5 mr-2" />
-                  {streamError && !hasCamera 
-                    ? 'Usar Cámara Local (Stream no disponible)'
-                    : 'Iniciar Reconocimiento Facial'}
+                  Iniciar Reconocimiento Facial
                 </Button>
               )}
 
+              {/* Registrar automáticamente (3-shots) */}
+              {(detectionStatus === 'idle' || detectionStatus === 'error') && (
+                <Button
+                  onClick={async () => {
+                    const name = window.prompt('Nombre para registrar (automático, 3 muestras):')
+                    if (!name) return
+                    try {
+                      setIsScanning(true)
+                      const resp = await fetch('/api/esp32/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name, samples: 3 })
+                      })
+                      const data = await resp.json()
+                      if (resp.ok && data.ok) {
+                        alert('Registro completado: ' + (data.message ?? 'OK'))
+                      } else {
+                        console.error(data)
+                        alert('Registro falló: ' + (data.message ?? 'Error'))
+                      }
+                    } catch (err) {
+                      console.error(err)
+                      alert('Error en el registro automático')
+                    } finally {
+                      setIsScanning(false)
+                    }
+                  }}
+                  variant="outline"
+                  className="w-full h-14 text-lg"
+                  size="lg"
+                >
+                  Registrar Automático
+                </Button>
+              )}
+              
+
               {detectionStatus === 'recognized' && detectionResult && (
-                <Link href="/kiosk/welcome?clientId=3" className="block">
+                <Link href={`/kiosk/welcome?clientId=${detectionResult.clientId}`} className="block">
                   <Button className="w-full h-14 text-lg" size="lg">
                     <CheckCircle2 className="w-5 h-5 mr-2" />
                     Continuar

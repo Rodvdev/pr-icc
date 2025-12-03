@@ -10,12 +10,18 @@ import {
   Menu,
   X,
   Users,
-  Plug
+  Plug,
+  CheckCircle2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 
 const navigation = [
+  {
+    name: "Solicitudes de Registro",
+    href: "/admin/registrations",
+    icon: CheckCircle2,
+  },
   {
     name: "FAQs",
     href: "/admin/faqs",
