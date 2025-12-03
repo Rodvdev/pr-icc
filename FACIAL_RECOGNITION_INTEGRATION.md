@@ -319,3 +319,4 @@ Stores detection events from cameras, linked to clients and cameras.
 - Check Python API `/api/users/register` endpoint
 - Review error messages in sync response
 
+
