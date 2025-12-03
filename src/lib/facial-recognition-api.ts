@@ -4,7 +4,7 @@
  * Client-side API client for consuming the external Python Facial Recognition API
  */
 
-import axios, { AxiosInstance } from 'axios'
+import axios from 'axios'
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_FACIAL_API_URL || 'http://localhost:5001/api'
 
@@ -47,6 +47,7 @@ export interface FacialAPIStats {
   total_detections: number
   recognized: Record<string, number>
   unknown_count: number
+  unique_persons?: number
   last_detection?: string
 }
 
@@ -54,6 +55,20 @@ export interface FacialAPIConfig {
   stream_url?: string
   threshold?: number
   encoding_model?: string
+  camera_id?: string
+}
+
+export interface FacialAPIUserRegistration {
+  name: string
+  encoding: number[] | unknown
+  image_url?: string
+  client_id: string
+}
+
+export interface FacialAPIUserRegistrationResponse {
+  success: boolean
+  user_id?: string
+  message?: string
 }
 
 /**
@@ -143,6 +158,41 @@ export const updateFacialConfig = async (config: FacialAPIConfig): Promise<unkno
     return response.data
   } catch (error) {
     console.error('Error updating facial config:', error)
+    throw error
+  }
+}
+
+/**
+ * Register a user with facial encoding to the Python API
+ * Note: Flask API uses /api/register endpoint
+ */
+export const registerUser = async (data: FacialAPIUserRegistration): Promise<FacialAPIUserRegistrationResponse> => {
+  try {
+    // Flask API expects: name, encoding (array), and optionally image_url
+    const response = await facialAPI.post<FacialAPIUserRegistrationResponse>('/register', {
+      name: data.name,
+      encoding: data.encoding,
+      image_url: data.image_url,
+      client_id: data.client_id
+    })
+    return response.data
+  } catch (error) {
+    console.error('Error registering user:', error)
+    throw error
+  }
+}
+
+/**
+ * Get results filtered by user name
+ */
+export const getResultsByName = async (name: string, limit: number = 20): Promise<FacialAPIResultsResponse> => {
+  try {
+    const response = await facialAPI.get<FacialAPIResultsResponse>(`/results/${encodeURIComponent(name)}`, {
+      params: { limit }
+    })
+    return response.data
+  } catch (error) {
+    console.error('Error fetching results by name:', error)
     throw error
   }
 }
