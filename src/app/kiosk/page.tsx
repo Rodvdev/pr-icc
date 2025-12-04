@@ -269,18 +269,17 @@ export default function KioskHomePage() {
 
         // Enviar descriptor a la API para reconocimiento
         try {
-          const response = await fetch('/api/facial-recognition/recognize', {
+          const response = await fetch('/api/kiosk/recognize', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              descriptor: Array.from(lastDetection.descriptor),
-              streamUrl: ESP32_STREAM_URL
+              descriptor: Array.from(lastDetection.descriptor)
             })
           })
 
           const data = await response.json()
 
-          if (response.ok && data.clientId) {
+          if (response.ok && data.ok && data.recognized && data.clientId) {
             setDetectionStatus('recognized')
             setDetectionResult({
               clientId: data.clientId,
@@ -296,7 +295,8 @@ export default function KioskHomePage() {
               message: 'No te reconocemos aún. Por favor, regístrate para usar este servicio.'
             })
           }
-        } catch {
+        } catch (err) {
+          console.error('Error en reconocimiento:', err)
           setDetectionStatus('error')
           setDetectionResult({
             status: 'error',
