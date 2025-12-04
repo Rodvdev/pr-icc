@@ -66,26 +66,33 @@ export const authOptions: NextAuthOptions = {
       },
       async authorize(credentials) {
         if ((!credentials?.email && !credentials?.dni) || !credentials?.password) {
+          console.log('[Auth] Missing credentials')
           return null
         }
 
         try {
+          // Normalize DNI - remove any whitespace
+          const normalizedDni = credentials.dni?.trim().replace(/\s+/g, '')
+          
           // Find client by email or DNI
           const client = await prisma.client.findUnique({
             where: credentials.email
-              ? { email: credentials.email }
-              : { dni: credentials.dni! }
+              ? { email: credentials.email.trim() }
+              : { dni: normalizedDni! }
           })
 
           if (!client) {
+            console.log('[Auth] Client not found:', credentials.email || normalizedDni)
             return null
           }
 
           if (client.status !== 'ACTIVE') {
+            console.log('[Auth] Client not active:', client.status)
             return null
           }
 
           if (!client.hashedPassword) {
+            console.log('[Auth] Client has no password set')
             return null
           }
 
@@ -93,9 +100,11 @@ export const authOptions: NextAuthOptions = {
           const isValid = await bcrypt.compare(credentials.password, client.hashedPassword)
           
           if (!isValid) {
+            console.log('[Auth] Password mismatch for client:', client.dni)
             return null
           }
 
+          console.log('[Auth] Successfully authenticated client:', client.dni)
           return {
             id: client.id,
             email: client.email,

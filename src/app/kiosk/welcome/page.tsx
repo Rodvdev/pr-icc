@@ -9,7 +9,6 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { 
   CheckCircle2, 
   MessageSquare, 
-  FileText, 
   Calendar,
   User,
   ArrowRight
@@ -21,7 +20,6 @@ interface ClientData {
   name: string
   email: string
   lastVisit?: Date
-  pendingDocuments?: number
   upcomingAppointments?: number
 }
 
@@ -29,7 +27,7 @@ interface ClientData {
  * Página de bienvenida después de identificación exitosa
  * - Muestra información personalizada del cliente
  * - Accesos rápidos a servicios
- * - Estado de visitas y documentos pendientes
+ * - Estado de cuenta y citas programadas
  */
 function KioskWelcomeContent() {
   const router = useRouter()
@@ -76,7 +74,6 @@ function KioskWelcomeContent() {
             name: data.name ?? null,
             email: data.email ?? null,
             lastVisit: data.lastVisit ?? null,
-            pendingDocuments: data.pendingDocuments ?? 0,
             upcomingAppointments: data.upcomingAppointments ?? 0
           }
 
@@ -92,27 +89,6 @@ function KioskWelcomeContent() {
     }
   }, [session, status, clientId, router])
 
-  const handleStartVisit = async (purpose: string) => {
-    if (!client?.id) return
-
-    try {
-      const response = await fetch('/api/kiosk/visit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          clientId: client.id,
-          purpose
-        })
-      })
-
-      if (response.ok) {
-        const data = await response.json()
-        router.push(`/kiosk/visit/${data.visitId}`)
-      }
-    } catch (error) {
-      console.error('Error al crear visita:', error)
-    }
-  }
 
   if (isLoading) {
     return (
@@ -121,8 +97,7 @@ function KioskWelcomeContent() {
           <div className="space-y-6">
             <Skeleton className="h-12 w-64 mx-auto" />
             <Skeleton className="h-6 w-48 mx-auto" />
-            <div className="grid md:grid-cols-3 gap-4 mt-8">
-              <Skeleton className="h-32" />
+            <div className="grid md:grid-cols-2 gap-4 mt-8">
               <Skeleton className="h-32" />
               <Skeleton className="h-32" />
             </div>
@@ -150,146 +125,97 @@ function KioskWelcomeContent() {
   }
 
   return (
-    <div className="container mx-auto px-6 max-w-5xl">
-      <div className="space-y-6">
+    <main className="flex-1 p-8">
+      <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
         {/* Welcome header */}
-        <Card className="p-8 bg-gradient-to-r from-blue-600 to-blue-700 text-white">
+        <div className="bank-card p-8 bg-gradient-to-r from-primary to-primary/90 text-primary-foreground">
           <div className="flex items-center justify-between">
             <div className="space-y-2">
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-8 h-8" />
-                <h1 className="text-3xl font-bold">¡Bienvenido de vuelta, {client.name.split(' ')[0]}!</h1>
+                <h1 className="font-display text-3xl font-bold">¡Bienvenido de vuelta, {client.name.split(' ')[0]}!</h1>
               </div>
-              <p className="text-blue-100">
+              <p className="text-primary-foreground/80">
                 {client.lastVisit 
                   ? `Última visita: ${new Date(client.lastVisit).toLocaleDateString('es-PE')}`
                   : 'Primera vez que nos visitas'
                 }
               </p>
             </div>
-            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+            <div className="w-20 h-20 rounded-full bg-primary-foreground/20 backdrop-blur-sm flex items-center justify-center">
               <User className="w-10 h-10" />
             </div>
           </div>
-        </Card>
+        </div>
 
         {/* Quick stats */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Card className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-lg bg-green-100 flex items-center justify-center">
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
+        <div className="grid md:grid-cols-2 gap-4">
+          <div className="bank-card p-6">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-bank-success/10 flex items-center justify-center">
+                <CheckCircle2 className="w-6 h-6 text-bank-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">Activo</p>
-                <p className="text-sm text-gray-600">Estado de cuenta</p>
+                <p className="text-2xl font-display font-bold text-foreground">Activo</p>
+                <p className="text-sm text-muted-foreground">Estado de cuenta</p>
               </div>
             </div>
-          </Card>
+          </div>
 
-          <Card className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-lg bg-blue-100 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {client.pendingDocuments || 0}
-                </p>
-                <p className="text-sm text-gray-600">Documentos pendientes</p>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center space-x-3">
-              <div className="w-12 h-12 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Calendar className="w-6 h-6 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-gray-900">
-                  {client.upcomingAppointments || 0}
-                </p>
-                <p className="text-sm text-gray-600">Citas programadas</p>
+          <Link href={`/kiosk/appointments/manage?clientId=${clientId}`} className="block">
+            <div className="bank-card p-6 hover:shadow-lg transition-shadow cursor-pointer">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <Calendar className="w-6 h-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-display font-bold text-foreground">
+                    {client.upcomingAppointments || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Citas programadas</p>
+                </div>
               </div>
             </div>
-          </Card>
+          </Link>
         </div>
 
         {/* Service options */}
         <div className="space-y-4">
-          <h2 className="text-xl font-bold text-gray-900">¿Qué necesitas hoy?</h2>
+          <h2 className="font-display text-xl font-bold text-foreground">¿Qué necesitas hoy?</h2>
           
           <div className="grid md:grid-cols-2 gap-4">
-            <Card 
-              className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => handleStartVisit('consulta')}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-lg bg-blue-100 flex items-center justify-center">
-                    <MessageSquare className="w-7 h-7 text-blue-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Consulta General</h3>
-                    <p className="text-sm text-gray-600">Habla con nuestro asistente virtual</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-6 h-6 text-gray-400" />
-              </div>
-            </Card>
-
-            <Card 
-              className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => handleStartVisit('retiro')}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-lg bg-green-100 flex items-center justify-center">
-                    <FileText className="w-7 h-7 text-green-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Retiro de Dinero</h3>
-                    <p className="text-sm text-gray-600">Solicita un retiro de tu cuenta</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-6 h-6 text-gray-400" />
-              </div>
-            </Card>
-
-            <Card 
-              className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
-              onClick={() => handleStartVisit('pago')}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-4">
-                  <div className="w-14 h-14 rounded-lg bg-purple-100 flex items-center justify-center">
-                    <CheckCircle2 className="w-7 h-7 text-purple-600" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold text-gray-900">Pago de Servicios</h3>
-                    <p className="text-sm text-gray-600">Realiza pagos de facturas</p>
-                  </div>
-                </div>
-                <ArrowRight className="w-6 h-6 text-gray-400" />
-              </div>
-            </Card>
-
             <Link href={`/kiosk/chat?clientId=${clientId}`} className="block">
-              <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
+              <div className="bank-card p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-4">
-                    <div className="w-14 h-14 rounded-lg bg-orange-100 flex items-center justify-center">
-                      <MessageSquare className="w-7 h-7 text-orange-600" />
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <MessageSquare className="w-7 h-7 text-primary" />
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">Chat en Vivo</h3>
-                      <p className="text-sm text-gray-600">Habla con un agente ahora</p>
+                      <h3 className="font-display text-lg font-semibold text-foreground">Consulta General / Chat en Vivo</h3>
+                      <p className="text-sm text-muted-foreground">Habla con nuestro asistente virtual</p>
                     </div>
                   </div>
-                  <ArrowRight className="w-6 h-6 text-gray-400" />
+                  <ArrowRight className="w-6 h-6 text-muted-foreground" />
                 </div>
-              </Card>
+              </div>
+            </Link>
+
+            <Link href={`/kiosk/appointments?clientId=${clientId}`} className="block">
+              <div className="bank-card p-6 hover:shadow-lg transition-shadow cursor-pointer h-full">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                      <Calendar className="w-7 h-7 text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="font-display text-lg font-semibold text-foreground">Programar Cita</h3>
+                      <p className="text-sm text-muted-foreground">Agenda una cita para una atención personalizada</p>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-6 h-6 text-muted-foreground" />
+                </div>
+              </div>
             </Link>
           </div>
         </div>
@@ -297,17 +223,17 @@ function KioskWelcomeContent() {
         {/* Actions */}
         <div className="flex justify-between items-center">
           <Link href="/kiosk">
-            <Button variant="outline" size="lg">
+            <Button variant="bank-outline" size="lg">
               Finalizar Sesión
             </Button>
           </Link>
           
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Sesión iniciada: {new Date().toLocaleTimeString('es-PE')}
           </p>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
 
@@ -319,8 +245,7 @@ export default function KioskWelcomePage() {
           <div className="space-y-6">
             <Skeleton className="h-12 w-64 mx-auto" />
             <Skeleton className="h-6 w-48 mx-auto" />
-            <div className="grid md:grid-cols-3 gap-4 mt-8">
-              <Skeleton className="h-32" />
+            <div className="grid md:grid-cols-2 gap-4 mt-8">
               <Skeleton className="h-32" />
               <Skeleton className="h-32" />
             </div>

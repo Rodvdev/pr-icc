@@ -12,7 +12,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
-    "db:seed:final": "tsx prisma/seed-final.ts"
+    "db:seed:final": "tsx prisma/seed-final.ts",
+    "fix:passwords": "tsx scripts/fix-test-passwords.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

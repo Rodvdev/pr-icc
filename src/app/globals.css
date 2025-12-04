@@ -120,3 +120,89 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Bank Design System */
+@layer utilities {
+  /* Bank Colors */
+  .bank-success {
+    @apply text-emerald-600 dark:text-emerald-400;
+  }
+  
+  .bank-warning {
+    @apply text-amber-600 dark:text-amber-400;
+  }
+  
+  .bank-camera {
+    @apply bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900;
+  }
+  
+  /* Bank Cards */
+  .bank-card {
+    @apply bg-card border border-border rounded-xl p-6 shadow-sm;
+  }
+  
+  .bank-card-elevated {
+    @apply bg-card border border-border rounded-xl p-6 shadow-lg;
+  }
+  
+  /* Bank Gradient */
+  .bank-gradient {
+    @apply bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900;
+  }
+  
+  /* Typography */
+  .font-display {
+    @apply font-sans;
+  }
+  
+  /* Shadows */
+  .shadow-glow {
+    @apply shadow-lg shadow-primary/20;
+  }
+  
+  .shadow-bank {
+    @apply shadow-md shadow-primary/10;
+  }
+  
+  /* Animations */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  .animate-fade-in {
+    animation: fade-in 0.3s ease-out;
+  }
+  
+  @keyframes scan {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+  
+  .animate-scan {
+    animation: scan 2s linear infinite;
+  }
+  
+  @keyframes face-detected {
+    0%, 100% {
+      transform: scale(1);
+    }
+    50% {
+      transform: scale(1.05);
+    }
+  }
+  
+  .animate-face-detected {
+    animation: face-detected 0.5s ease-in-out;
+  }
+}

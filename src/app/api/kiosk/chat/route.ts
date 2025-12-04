@@ -51,35 +51,50 @@ export async function POST(request: NextRequest) {
     let metadata: Record<string, unknown> = {}
 
     try {
-      // Buscar en FAQs
-      const faqResults = await faqSearch(message, [], 3)
-      
-      // Buscar en QA pairs
-      const qaResults = await qaSearch(message, 3)
+      const lowerMessage = message.toLowerCase()
+      const isAboutHours = lowerMessage.includes('horario') || 
+                           lowerMessage.includes('hora') || 
+                           lowerMessage.includes('abierto') || 
+                           lowerMessage.includes('cerrado') ||
+                           lowerMessage.includes('atención') ||
+                           lowerMessage.includes('atender')
 
-      // Si hay resultados, usar el más relevante
-      if (faqResults.items.length > 0 && faqResults.items[0].relevance > 0.6) {
-        response = faqResults.items[0].answer
-        metadata = {
-          source: 'faq',
-          faqId: faqResults.items[0].id,
-          relevance: faqResults.items[0].relevance
-        }
-      } else if (qaResults.items.length > 0 && qaResults.items[0].relevance > 0.6) {
-        response = qaResults.items[0].answer
-        metadata = {
-          source: 'qa',
-          qaId: qaResults.items[0].id,
-          relevance: qaResults.items[0].relevance
+      // Solo responder si es sobre horarios
+      if (isAboutHours) {
+        // Buscar en FAQs relacionadas con horarios
+        const faqResults = await faqSearch(message, ['horarios', 'horario', 'atención'], 3)
+        
+        // Buscar en QA pairs relacionadas con horarios
+        const qaResults = await qaSearch(message, 3)
+
+        // Si hay resultados sobre horarios, usar el más relevante
+        if (faqResults.items.length > 0 && faqResults.items[0].relevance > 0.6) {
+          response = faqResults.items[0].answer
+          metadata = {
+            source: 'faq',
+            faqId: faqResults.items[0].id,
+            relevance: faqResults.items[0].relevance
+          }
+        } else if (qaResults.items.length > 0 && qaResults.items[0].relevance > 0.6) {
+          response = qaResults.items[0].answer
+          metadata = {
+            source: 'qa',
+            qaId: qaResults.items[0].id,
+            relevance: qaResults.items[0].relevance
+          }
+        } else {
+          // Respuesta por defecto sobre horarios
+          response = getDefaultResponse(message)
+          metadata = { source: 'default' }
         }
       } else {
-        // Respuesta por defecto si no hay match
+        // Si no es sobre horarios, indicar que solo puede ayudar con horarios
         response = getDefaultResponse(message)
         metadata = { source: 'default' }
       }
     } catch (error) {
       console.error('Error buscando respuesta:', error)
-      response = 'Lo siento, tuve un problema al procesar tu pregunta. ¿Podrías reformularla?'
+      response = 'Lo siento, tuve un problema al procesar tu pregunta sobre horarios. ¿Podrías reformularla?'
       metadata = { error: true }
     }
 
@@ -111,41 +126,35 @@ export async function POST(request: NextRequest) {
 }
 
 /**
- * Respuestas por defecto basadas en palabras clave
+ * Respuestas por defecto - solo sobre horarios de atención
  */
 function getDefaultResponse(message: string): string {
   const lowerMessage = message.toLowerCase()
 
-  if (lowerMessage.includes('horario')) {
-    return 'Nuestros horarios de atención son de lunes a viernes de 9:00 AM a 6:00 PM, y sábados de 9:00 AM a 1:00 PM. ¿Hay algo más en lo que pueda ayudarte?'
+  // Saludos
+  if (lowerMessage.includes('hola') || lowerMessage.includes('buenos días') || lowerMessage.includes('buenas tardes') || lowerMessage.includes('buenas noches')) {
+    return '¡Hola! Bienvenido. Solo puedo ayudarte con información sobre nuestros horarios de atención. ¿Cuál es tu consulta sobre horarios?'
   }
 
-  if (lowerMessage.includes('retiro') || lowerMessage.includes('dinero')) {
-    return 'Para realizar un retiro de dinero, puedes hacerlo en nuestros cajeros automáticos disponibles 24/7, o en ventanilla durante nuestro horario de atención. El monto máximo de retiro diario es de S/ 2,000. ¿Necesitas más información?'
+  // Despedidas
+  if (lowerMessage.includes('gracias') || lowerMessage.includes('adios') || lowerMessage.includes('chau')) {
+    return 'De nada. Si necesitas más información sobre horarios, no dudes en consultarme. ¡Que tengas un excelente día!'
   }
 
-  if (lowerMessage.includes('cuenta') || lowerMessage.includes('abrir')) {
-    return 'Para abrir una cuenta con nosotros, necesitas tu DNI vigente y comprobante de domicilio. El proceso toma aproximadamente 15 minutos. ¿Te gustaría agendar una cita con uno de nuestros asesores?'
+  // Consultas sobre horarios
+  if (lowerMessage.includes('horario') || 
+      lowerMessage.includes('hora') || 
+      lowerMessage.includes('abierto') || 
+      lowerMessage.includes('cerrado') ||
+      lowerMessage.includes('atención') ||
+      lowerMessage.includes('atender') ||
+      lowerMessage.includes('cuándo') ||
+      lowerMessage.includes('disponible')) {
+    return 'Nuestros horarios de atención son de lunes a viernes de 9:00 AM a 6:00 PM, y sábados de 9:00 AM a 1:00 PM. ¿Hay algo más sobre horarios en lo que pueda ayudarte?'
   }
 
-  if (lowerMessage.includes('mantenimiento') || lowerMessage.includes('costo')) {
-    return 'Nuestras cuentas de ahorro no tienen costo de mantenimiento mensual. Las cuentas corrientes tienen un mantenimiento de S/ 15 mensuales. ¿Quieres conocer más detalles sobre nuestros productos?'
-  }
-
-  if (lowerMessage.includes('agente') || lowerMessage.includes('humano') || lowerMessage.includes('persona')) {
-    return 'Entiendo que prefieres hablar con un agente humano. Por favor, dirígete al mostrador de atención al cliente donde un asesor estará encantado de ayudarte. Si estás en cola, tu turno será llamado pronto.'
-  }
-
-  if (lowerMessage.includes('hola') || lowerMessage.includes('buenos días') || lowerMessage.includes('buenas tardes')) {
-    return '¡Hola! Bienvenido al Banco Digital. Estoy aquí para ayudarte con tus consultas sobre nuestros servicios. ¿En qué puedo asistirte hoy?'
-  }
-
-  if (lowerMessage.includes('gracias')) {
-    return 'De nada, es un placer ayudarte. Si tienes más preguntas, no dudes en consultarme. ¡Que tengas un excelente día!'
-  }
-
-  // Respuesta genérica
-  return 'Gracias por tu pregunta. Para poder ayudarte mejor, podrías ser más específico? También puedes hablar con uno de nuestros asesores en el mostrador de atención al cliente.'
+  // Si no es sobre horarios, indicar que solo puede ayudar con horarios
+  return 'Solo puedo ayudarte con información sobre nuestros horarios de atención. Nuestros horarios son de lunes a viernes de 9:00 AM a 6:00 PM, y sábados de 9:00 AM a 1:00 PM. Para otras consultas, por favor dirígete al mostrador de atención al cliente.'
 }
 
 /**

@@ -51,6 +51,14 @@ enum VisitStatus {
   ABANDONED
 }
 
+enum AppointmentStatus {
+  SCHEDULED
+  CONFIRMED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
 enum ChatActor {
   CLIENT
   BOT
@@ -124,6 +132,7 @@ model Client {
   facialProfiles   FacialProfile[]
   detections       DetectionEvent[]
   visits           Visit[]
+  appointments     Appointment[]
   chatSessions     ChatSession[]
   chatMetrics      ChatMetric[]          @relation("ChatMetricsClient")
   registrationReqs RegistrationRequest[]
@@ -152,6 +161,7 @@ model Branch {
   cameras          Camera[]
   admins           User[]                @relation("BranchAdmins")
   visits           Visit[]
+  appointments     Appointment[]
   registrationReqs RegistrationRequest[]
 
   @@index([code])
@@ -264,6 +274,28 @@ model Visit {
   @@index([branchId, startedAt])
   @@index([status])
   @@index([clientId, status])
+}
+
+/// Citas programadas
+model Appointment {
+  id          String            @id @default(cuid())
+  clientId    String
+  branchId    String
+  scheduledAt DateTime
+  purpose     String? // motivo de la cita
+  notes       String? // notas adicionales
+  status      AppointmentStatus @default(SCHEDULED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  branch Branch @relation(fields: [branchId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, scheduledAt])
+  @@index([branchId, scheduledAt])
+  @@index([status])
+  @@index([status, scheduledAt])
 }
 
 /// Solicitudes de registro del cliente (requiere aprobación del admin)

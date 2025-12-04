@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Camera as CameraIcon, Plus, Activity } from "lucide-react"
 import type { Camera } from "@prisma/client"
+import { cn } from "@/lib/utils"
 
 interface CameraWithBranch extends Camera {
   branch: { name: string }
@@ -54,16 +55,13 @@ export default function CamerasPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Monitoreo de Cámaras</h1>
-          <p className="text-gray-600 mt-1">
-            Estado en tiempo real de cámaras de reconocimiento facial
-          </p>
+          <p className="text-muted-foreground">Estado de las cámaras ESP32-CAM</p>
         </div>
-        <Button>
+        <Button variant="bank">
           <Plus className="mr-2 h-4 w-4" />
           Agregar Cámara
         </Button>
@@ -121,59 +119,36 @@ export default function CamerasPage() {
 
       {/* Cameras Grid */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Cargando...</div>
+        <div className="text-center py-12 text-muted-foreground">Cargando...</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {cameras.map((camera) => (
-            <Card key={camera.id} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                      <CameraIcon className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <CardTitle className="text-lg">{camera.name}</CardTitle>
-                      <p className="text-sm text-gray-500">{camera.branch?.name}</p>
-                    </div>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Estado</span>
-                    {getStatusBadge(camera.status)}
-                  </div>
-                  
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Stream URL</span>
-                    <span className="font-mono text-xs truncate max-w-[120px]">
-                      {camera.streamUrl || "No configurado"}
-                    </span>
-                  </div>
-
-                  {camera.lastHeartbeat && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-gray-600">Última actividad</span>
-                      <span className="text-xs">
-                        {new Date(camera.lastHeartbeat).toLocaleTimeString()}
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2 pt-2">
-                    <Button variant="outline" size="sm" className="flex-1">
-                      <Activity className="mr-2 h-3 w-3" />
-                      Logs
-                    </Button>
-                    <Button variant="outline" size="sm" className="flex-1">
-                      Configurar
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <div key={camera.id} className="bank-card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className={cn(
+                  "w-3 h-3 rounded-full",
+                  camera.status === "ONLINE" ? "bg-bank-success animate-pulse" : "bg-destructive"
+                )} />
+                <Button size="sm" variant="ghost">
+                  <Activity className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="aspect-video rounded-xl bg-bank-camera mb-4 flex items-center justify-center">
+                <CameraIcon className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-semibold text-foreground">{camera.name}</h3>
+              <p className="text-sm text-muted-foreground">{camera.branch?.name}</p>
+              <div className="mt-3 flex items-center gap-2">
+                <span className={cn(
+                  "text-xs font-medium px-2 py-1 rounded-full",
+                  camera.status === "ONLINE" 
+                    ? "bg-bank-success/10 text-bank-success" 
+                    : "bg-destructive/10 text-destructive"
+                )}>
+                  {camera.status === "ONLINE" ? "En línea" : "Desconectada"}
+                </span>
+              </div>
+            </div>
           ))}
         </div>
       )}

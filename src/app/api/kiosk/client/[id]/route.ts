@@ -33,13 +33,27 @@ export async function GET(
       return NextResponse.json({ ok: false, message: 'Client not found' }, { status: 404 })
     }
 
+    // Contar citas programadas futuras
+    const upcomingAppointments = await prisma.appointment.count({
+      where: {
+        clientId: id,
+        scheduledAt: {
+          gte: new Date()
+        },
+        status: {
+          in: ['SCHEDULED', 'CONFIRMED']
+        }
+      }
+    })
+
     return NextResponse.json({
       ok: true,
       id: client.id,
       name: client.name ?? null,
       email: client.email ?? null,
       phone: client.phone ?? null,
-      lastVisit: client.createdAt?.toISOString() ?? null
+      lastVisit: client.createdAt?.toISOString() ?? null,
+      upcomingAppointments
     })
   } catch (error) {
     console.error('Error obteniendo datos del cliente:', error)

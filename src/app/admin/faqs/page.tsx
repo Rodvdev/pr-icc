@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, Plus, Save, X, Eye, CheckCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 type FAQ = {
   id: string
@@ -95,33 +96,61 @@ export default function FAQsPage() {
   const preview = selected ?? filtered[0] ?? null
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">FAQs</h1>
-          <p className="text-gray-600 mt-1">Preguntas frecuentes para kiosko/cliente</p>
+          <p className="text-muted-foreground">Configura las preguntas frecuentes del chatbot</p>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative w-72">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Buscar por título o contenido..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9"
+              className="pl-9 rounded-xl"
             />
           </div>
-          <Button onClick={() => openEditor()}>
+          <Button variant="bank" onClick={() => openEditor()}>
             <Plus className="mr-2 h-4 w-4" />
-            Crear
+            Nueva FAQ
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <Card className="lg:col-span-7 xl:col-span-8">
-          <CardContent className="pt-6">
-            <Table>
+      <div className="grid gap-4">
+        {filtered.map((faq) => (
+          <div key={faq.id} className="bank-card p-6">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center gap-3 mb-2">
+                  <h3 className="font-semibold text-foreground">{faq.title}</h3>
+                  <span className={cn(
+                    "text-xs font-medium px-2 py-1 rounded-full",
+                    faq.status === "PUBLISHED" 
+                      ? "bg-bank-success/10 text-bank-success" 
+                      : "bg-muted text-muted-foreground"
+                  )}>
+                    {faq.status === "PUBLISHED" ? "Publicado" : "Borrador"}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground mb-2">{faq.category || "General"}</p>
+                <p className="text-sm text-muted-foreground">{new Date(faq.updatedAt).toLocaleString()}</p>
+              </div>
+              <div className="flex gap-2">
+                {faq.status === "DRAFT" && (
+                  <Button size="sm" variant="outline" onClick={() => publishFAQ(faq.id)}>
+                    <CheckCircle className="h-4 w-4 mr-1" /> Publicar
+                  </Button>
+                )}
+                <Button size="sm" variant="ghost" onClick={() => openEditor(faq)}>
+                  Editar
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
               <TableHeader>
                 <TableRow>
                   <TableHead>Pregunta</TableHead>

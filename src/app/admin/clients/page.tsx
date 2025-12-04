@@ -99,69 +99,64 @@ export default function ClientsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Clientes</h1>
-          <p className="text-gray-600 mt-1">Consulta de clientes (solo lectura)</p>
+          <p className="text-muted-foreground">Gestiona los clientes registrados en el sistema</p>
         </div>
         <div className="relative w-72">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Buscar por DNI o nombre..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 rounded-xl"
           />
         </div>
       </div>
 
       {/* Resultados */}
-      <Card>
-        <CardContent className="pt-6">
+      <div className="bank-card overflow-hidden">
           {loading ? (
-            <div className="text-center py-8 text-gray-500">Cargando...</div>
+            <div className="text-center py-8 text-muted-foreground">Cargando...</div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nombre</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>DNI</TableHead>
-                  <TableHead>Estado</TableHead>
-                  <TableHead>Fecha Registro</TableHead>
-                  
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <table className="w-full">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Cliente</th>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">DNI</th>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Email</th>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Estado</th>
+                  <th className="text-left px-6 py-4 text-sm font-semibold text-foreground">Fecha Registro</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border">
                 {clients.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                  <tr>
+                    <td colSpan={5} className="text-center py-8 text-muted-foreground">
                       No se encontraron clientes
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ) : (
                   clients.map((client) => (
-                    <TableRow key={client.id}>
-                      <TableCell className="font-medium">
-                        {client.name || "Sin nombre"}
-                      </TableCell>
-                      <TableCell>{client.email}</TableCell>
-                      <TableCell>{client.dni || "-"}</TableCell>
-                      <TableCell>{getStatusBadge(client.status)}</TableCell>
-                      <TableCell>
+                    <tr key={client.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="font-medium text-foreground">{client.name || "Sin nombre"}</p>
+                      </td>
+                      <td className="px-6 py-4 text-muted-foreground">{client.dni || "-"}</td>
+                      <td className="px-6 py-4 text-muted-foreground">{client.email}</td>
+                      <td className="px-6 py-4">{getStatusBadge(client.status)}</td>
+                      <td className="px-6 py-4 text-muted-foreground">
                         {new Date(client.createdAt).toLocaleDateString()}
-                      </TableCell>
-                      
-                    </TableRow>
+                      </td>
+                    </tr>
                   ))
                 )}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
           )}
-        </CardContent>
-      </Card>
+      </div>
     </div>
   )
 }

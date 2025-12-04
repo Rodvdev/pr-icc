@@ -97,56 +97,43 @@ export default async function AdminDashboard() {
   ]
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="text-3xl font-bold text-gray-900 mb-2">
-          Dashboard Administrativo
-        </h2>
-        <p className="text-gray-600">
-          Bienvenido al panel de control del Sistema de Identificación Bancaria
-        </p>
-      </div>
-
+    <div className="space-y-8 animate-fade-in">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (
-          <Card key={index}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.title}
-              </CardTitle>
-              <stat.icon className={`h-4 w-4 ${stat.color}`} />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-            </CardContent>
-          </Card>
+          <div key={index} className="bank-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                <stat.icon className="w-6 h-6 text-primary" />
+              </div>
+            </div>
+            <p className="text-3xl font-display font-bold text-foreground">{stat.value}</p>
+            <p className="text-sm text-muted-foreground mt-1">{stat.title}</p>
+          </div>
         ))}
       </div>
 
       {/* Quick Actions */}
       <div>
-        <h3 className="text-xl font-semibold text-gray-900 mb-6">
+        <h3 className="text-xl font-display font-semibold text-foreground mb-6">
           Acciones Rápidas
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {quickActions.map((action, index) => (
-            <Card key={index} className="hover:shadow-lg transition-shadow">
-              <CardHeader>
-                <div className="flex items-center space-x-2">
-                  <action.icon className="h-5 w-5 text-blue-600" />
-                  <CardTitle className="text-lg">{action.title}</CardTitle>
+            <div key={index} className="bank-card hover:shadow-lg transition-shadow">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <action.icon className="w-5 h-5 text-primary" />
                 </div>
-                <CardDescription>{action.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Button asChild className="w-full">
-                  <Link href={action.href}>
-                    Acceder
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
+                <h4 className="font-display font-semibold text-lg text-foreground">{action.title}</h4>
+              </div>
+              <p className="text-sm text-muted-foreground mb-4">{action.description}</p>
+              <Button asChild variant="bank" className="w-full">
+                <Link href={action.href}>
+                  Acceder
+                </Link>
+              </Button>
+            </div>
           ))}
         </div>
       </div>
@@ -206,58 +193,50 @@ async function RecentActivity() {
 
   return (
     <div>
-      <h3 className="text-xl font-semibold text-gray-900 mb-6">
+      <h3 className="text-xl font-display font-semibold text-foreground mb-6">
         Actividad Reciente
       </h3>
-      <Card>
-        <CardHeader>
-          <CardTitle>Últimas Acciones</CardTitle>
-          <CardDescription>
-            Registro de actividades del sistema
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {recentLogs.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-8">
-              No hay actividad reciente
-            </p>
-          ) : (
-            <div className="space-y-4">
-              {recentLogs.slice(0, 5).map((log: {
-                id: string
-                action: string
-                createdAt: Date
-                actorUser: { name: string | null } | null
-                targetClient: { name: string | null } | null
-              }) => {
-                const display = getActionDisplay(log.action)
-                const userName = log.actorUser?.name || log.targetClient?.name || 'Sistema'
-                
-                return (
-                  <div key={log.id} className="flex items-center space-x-4">
-                    <display.icon className={`h-4 w-4 ${display.color}`} />
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{display.text}</p>
-                      <p className="text-xs text-gray-500">
-                        {userName} - {formatTimeAgo(log.createdAt)}
-                      </p>
-                    </div>
+      <div className="bank-card p-6">
+        {recentLogs.length === 0 ? (
+          <p className="text-sm text-muted-foreground text-center py-8">
+            No hay actividad reciente
+          </p>
+        ) : (
+          <div className="space-y-3">
+            {recentLogs.slice(0, 5).map((log: {
+              id: string
+              action: string
+              createdAt: Date
+              actorUser: { name: string | null } | null
+              targetClient: { name: string | null } | null
+            }) => {
+              const display = getActionDisplay(log.action)
+              const userName = log.actorUser?.name || log.targetClient?.name || 'Sistema'
+              
+              return (
+                <div key={log.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted">
+                  <display.icon className={`h-4 w-4 ${display.color}`} />
+                  <div className="flex-1">
+                    <p className="text-sm font-medium text-foreground">{display.text}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {userName} - {formatTimeAgo(log.createdAt)}
+                    </p>
                   </div>
-                )
-              })}
-            </div>
-          )}
-          {recentLogs.length > 0 && (
-            <div className="mt-6 pt-4 border-t">
-              <Button asChild variant="outline" className="w-full">
-                <Link href="/admin/audit">
-                  Ver todos los registros
-                </Link>
-              </Button>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                </div>
+              )
+            })}
+          </div>
+        )}
+        {recentLogs.length > 0 && (
+          <div className="mt-6 pt-4 border-t border-border">
+            <Button asChild variant="bank-outline" className="w-full">
+              <Link href="/admin/audit">
+                Ver todos los registros
+              </Link>
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

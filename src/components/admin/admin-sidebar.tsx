@@ -10,27 +10,25 @@ import {
   Menu,
   X,
   Users,
-  Plug,
-  CheckCircle2
+  CheckCircle2,
+  Building2,
+  LogOut,
+  Camera
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
+import { useSession, signOut } from "next-auth/react"
 
 const navigation = [
+  {
+    name: "Dashboard",
+    href: "/admin",
+    icon: BarChart3,
+  },
   {
     name: "Solicitudes de Registro",
     href: "/admin/registrations",
     icon: CheckCircle2,
-  },
-  {
-    name: "FAQs",
-    href: "/admin/faqs",
-    icon: MessageSquare,
-  },
-  {
-    name: "Chatbot",
-    href: "/admin/chatbot",
-    icon: MessageSquare,
   },
   {
     name: "Clientes",
@@ -38,9 +36,14 @@ const navigation = [
     icon: Users,
   },
   {
-    name: "Dispositivos",
-    href: "/admin/devices",
-    icon: Plug,
+    name: "FAQs",
+    href: "/admin/faqs",
+    icon: MessageSquare,
+  },
+  {
+    name: "Cámaras",
+    href: "/admin/cameras",
+    icon: Camera,
   },
   {
     name: "Métricas",
@@ -57,6 +60,17 @@ const navigation = [
 export function AdminSidebar() {
   const pathname = usePathname()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const { data: session } = useSession()
+
+  const getInitials = (name?: string | null) => {
+    if (!name) return "?"
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2)
+  }
 
   return (
     <>
@@ -66,7 +80,7 @@ export function AdminSidebar() {
           variant="outline"
           size="icon"
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="bg-white"
+          className="bg-card"
         >
           {mobileMenuOpen ? (
             <X className="h-5 w-5" />
@@ -87,28 +101,31 @@ export function AdminSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed top-0 left-0 z-40 h-screen w-64 bg-white border-r border-gray-200 transition-transform",
+          "fixed top-0 left-0 z-40 h-screen w-64 bg-card border-r border-border transition-transform",
           "lg:translate-x-0",
           mobileMenuOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="flex h-16 shrink-0 items-center border-b border-gray-200 px-6">
+          <div className="p-6 border-b border-border">
             <Link
               href="/admin"
-              className="flex items-center space-x-2"
+              className="flex items-center gap-3"
               onClick={() => setMobileMenuOpen(false)}
             >
-              <div className="h-8 w-8 rounded-lg bg-blue-600 flex items-center justify-center">
-                <span className="text-white font-bold text-lg">BA</span>
+              <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-semibold text-gray-900">Banking Agent</span>
+              <div>
+                <h1 className="font-display font-semibold text-foreground">Banco Digital</h1>
+                <p className="text-xs text-muted-foreground">Panel Admin</p>
+              </div>
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 space-y-1 px-3 py-4 overflow-y-auto">
+          <nav className="flex-1 p-4 space-y-1 overflow-y-auto">
             {navigation.map((item) => {
               const isActive =
                 pathname === item.href ||
@@ -120,32 +137,41 @@ export function AdminSidebar() {
                   href={item.href}
                   onClick={() => setMobileMenuOpen(false)}
                   className={cn(
-                    "group flex items-center gap-x-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-colors",
                     isActive
-                      ? "bg-blue-50 text-blue-600"
-                      : "text-gray-700 hover:bg-gray-50 hover:text-gray-900"
+                      ? "bg-primary text-primary-foreground"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
-                  <item.icon
-                    className={cn(
-                      "h-5 w-5 shrink-0",
-                      isActive
-                        ? "text-blue-600"
-                        : "text-gray-400 group-hover:text-gray-600"
-                    )}
-                  />
+                  <item.icon className="w-5 h-5" />
                   {item.name}
                 </Link>
               )
             })}
           </nav>
 
-          {/* Footer */}
-          <div className="border-t border-gray-200 p-4">
-            <div className="text-xs text-gray-500 text-center">
-              Banking Agent ID System
-              <br />
-              <span className="text-gray-400">v1.0.0</span>
+          {/* User */}
+          <div className="p-4 border-t border-border">
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-muted">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <span className="text-sm font-semibold text-primary">
+                  {getInitials(session?.user?.name)}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">
+                  {session?.user?.name || "Usuario"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {session?.user?.role ? session.user.role.toLowerCase() : "Administrador"}
+                </p>
+              </div>
+              <button 
+                className="p-2 text-muted-foreground hover:text-foreground"
+                onClick={() => signOut({ callbackUrl: "/auth/signin" })}
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
             </div>
           </div>
         </div>
