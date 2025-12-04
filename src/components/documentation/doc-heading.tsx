@@ -27,7 +27,7 @@ export function DocHeading({
   const headingId =
     id || (typeof children === "string" ? generateId(children) : "")
 
-  const HeadingTag = `h${level}` as keyof JSX.IntrinsicElements
+  const HeadingTag = `h${level}` as "h2" | "h3" | "h4"
 
   return (
     <HeadingTag id={headingId} className={className}>
