@@ -13,7 +13,8 @@ import {
   CheckCircle2,
   Building2,
   LogOut,
-  Camera
+  Camera,
+  Calendar
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
@@ -34,6 +35,11 @@ const navigation = [
     name: "Clientes",
     href: "/admin/clients",
     icon: Users,
+  },
+  {
+    name: "Citas",
+    href: "/admin/appointments",
+    icon: Calendar,
   },
   {
     name: "FAQs",
