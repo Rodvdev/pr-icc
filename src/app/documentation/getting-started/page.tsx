@@ -2,6 +2,7 @@ import Link from "next/link"
 import { ArrowRight, CheckCircle2, Terminal, Database, Rocket } from "lucide-react"
 import { CodeBlock } from "@/components/documentation/code-block"
 import { DocAlert } from "@/components/documentation/doc-alert"
+import { DocNavigation } from "@/components/documentation/doc-navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -345,6 +346,9 @@ FACIAL_RECOGNITION_WEBHOOK_SECRET=your-secret-here`}
           </DocAlert>
         </div>
       </section>
+
+      {/* Navigation */}
+      <DocNavigation />
     </div>
   )
 }

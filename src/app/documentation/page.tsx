@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { ArrowRight, Building2, Brain, Cpu, Database, Cloud, Users, Camera, MessageSquare, Zap } from "lucide-react"
+import { ArrowRight, Building2, Brain, Cpu, Database, Cloud, Users, Camera, MessageSquare, Zap, Layers } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -352,7 +352,4 @@ export default function DocumentationHomePage() {
     </div>
   )
 }
-
-// Fix missing import
-import { Layers } from "lucide-react"
 

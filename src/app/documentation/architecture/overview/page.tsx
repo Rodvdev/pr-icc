@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { CodeBlock } from "@/components/documentation/code-block"
 import { DocAlert } from "@/components/documentation/doc-alert"
+import { DocNavigation } from "@/components/documentation/doc-navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Server, Database, Brain, Cpu, Cloud } from "lucide-react"
@@ -441,6 +442,9 @@ Response Generation → Database Logging → Response to User`}
           </DocAlert>
         </div>
       </section>
+
+      {/* Navigation */}
+      <DocNavigation />
     </div>
   )
 }

@@ -37,6 +37,11 @@ export const documentationNav: DocNavSection[] = [
         href: "/documentation/getting-started",
         icon: Rocket,
       },
+      {
+        title: "About the Project",
+        href: "/documentation/about",
+        icon: FileText,
+      },
     ],
   },
   {
