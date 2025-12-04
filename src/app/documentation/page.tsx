@@ -86,6 +86,20 @@ export default function DocumentationHomePage() {
         </div>
       </div>
 
+      {/* YouTube Video Embed */}
+      <div className="space-y-4">
+        <h2 className="text-2xl font-bold tracking-tight">Video Demo</h2>
+        <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
+          <iframe
+            className="absolute top-0 left-0 w-full h-full rounded-lg"
+            src="https://www.youtube.com/embed/vW08FPfk7_A"
+            title="Banking Agent ID System Demo"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+          />
+        </div>
+      </div>
+
       {/* Problem & Solution */}
       <div className="grid gap-6 md:grid-cols-2">
         <Card>

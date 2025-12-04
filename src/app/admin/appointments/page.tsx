@@ -3,8 +3,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Card } from "@/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
@@ -18,9 +16,7 @@ import {
   Clock, 
   Edit, 
   Trash2, 
-  X,
-  AlertCircle,
-  CheckCircle2
+  AlertCircle
 } from "lucide-react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -82,7 +78,6 @@ export default function AppointmentsPage() {
   const [appointmentTime, setAppointmentTime] = useState("")
   const [purpose, setPurpose] = useState("")
   const [notes, setNotes] = useState("")
-  const [availableSlots, setAvailableSlots] = useState<string[]>([])
   const [occupiedSlots, setOccupiedSlots] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -166,8 +161,8 @@ export default function AppointmentsPage() {
           const data = await response.json()
           
           if (response.ok) {
-            setAvailableSlots(data.availableSlots || [])
             setOccupiedSlots(data.occupiedSlots || [])
+            // availableSlots is used implicitly for filtering in the select dropdown
           }
         } catch (err) {
           console.error('Error al obtener horarios disponibles:', err)
@@ -175,7 +170,6 @@ export default function AppointmentsPage() {
       }
       fetchSlots()
     } else {
-      setAvailableSlots([])
       setOccupiedSlots([])
     }
   }, [appointmentDate, selectedBranch, editingAppointment])

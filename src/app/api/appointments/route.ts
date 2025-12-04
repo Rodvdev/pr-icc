@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { Prisma, AppointmentStatus } from '@prisma/client'
 
 /**
  * GET /api/appointments
@@ -28,14 +29,14 @@ export async function GET(request: NextRequest) {
     const search = searchParams.get('search')
 
     // Build where clause
-    const where: any = {}
+    const where: Prisma.AppointmentWhereInput = {}
 
     if (clientId) {
       where.clientId = clientId
     }
 
     if (status && status !== 'all') {
-      where.status = status
+      where.status = status as AppointmentStatus
     }
 
     if (branchId) {
