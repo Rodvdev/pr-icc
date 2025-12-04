@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 interface Heading {
   id: string
@@ -18,97 +19,180 @@ export function TableOfContents({ className }: TableOfContentsProps) {
   const [activeId, setActiveId] = useState<string>("")
 
   useEffect(() => {
-    // Extract headings from the page
-    const headingElements = Array.from(
-      document.querySelectorAll("h2, h3, h4")
-    ) as HTMLElement[]
+    let observer: IntersectionObserver | null = null
+    let headingElements: HTMLElement[] = []
 
-    const extractedHeadings: Heading[] = headingElements.map((heading) => {
-      let id = heading.id
+    // Function to scroll to hash on page load
+    const scrollToHash = () => {
+      const hash = window.location.hash.replace("#", "")
+      if (hash) {
+        setTimeout(() => {
+          const element = document.getElementById(hash)
+          if (element) {
+            const headerOffset = 120
+            const elementPosition = element.getBoundingClientRect().top + window.pageYOffset
+            const offsetPosition = elementPosition - headerOffset
 
-      if (!id) {
-        // Generate ID from text if not present
-        id = heading.textContent
-          ?.toLowerCase()
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "") || ""
-        heading.id = id
-      }
-
-      return {
-        id,
-        text: heading.textContent || "",
-        level: parseInt(heading.tagName.charAt(1)),
-      }
-    })
-
-    setHeadings(extractedHeadings)
-
-    // Intersection Observer for active heading
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveId(entry.target.id)
+            window.scrollTo({
+              top: Math.max(0, offsetPosition),
+              behavior: "smooth",
+            })
+            
+            setActiveId(hash)
           }
-        })
-      },
-      {
-        rootMargin: "-100px 0% -66%",
+        }, 300)
       }
-    )
+    }
 
-    headingElements.forEach((heading) => observer.observe(heading))
+    // Wait for page to be fully loaded
+    const timeoutId = setTimeout(() => {
+      // Extract headings from the page
+      headingElements = Array.from(
+        document.querySelectorAll("main h2, main h3, main h4")
+      ) as HTMLElement[]
 
+      const extractedHeadings: Heading[] = headingElements.map((heading, index) => {
+        let id = heading.id
+
+        if (!id || id === "") {
+          // Generate ID from text if not present
+          const text = heading.textContent || ""
+          id = text
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-+|-+$/g, "") || `heading-${index}`
+          
+          // Ensure unique ID
+          let uniqueId = id
+          let counter = 1
+          while (document.getElementById(uniqueId)) {
+            uniqueId = `${id}-${counter}`
+            counter++
+          }
+          
+          heading.id = uniqueId
+          id = uniqueId
+        }
+
+        return {
+          id,
+          text: heading.textContent || "",
+          level: parseInt(heading.tagName.charAt(1)),
+        }
+      })
+
+      setHeadings(extractedHeadings)
+
+      // Scroll to hash if present in URL
+      scrollToHash()
+
+      // Intersection Observer for active heading
+      observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              setActiveId(entry.target.id)
+            }
+          })
+        },
+        {
+          rootMargin: "-120px 0% -66%",
+          threshold: 0,
+        }
+      )
+
+      headingElements.forEach((heading) => {
+        if (heading.id) {
+          observer?.observe(heading)
+        }
+      })
+    }, 100)
+
+    // Cleanup function
     return () => {
-      headingElements.forEach((heading) => observer.unobserve(heading))
+      clearTimeout(timeoutId)
+      if (observer) {
+        headingElements.forEach((heading) => {
+          observer?.unobserve(heading)
+        })
+        observer.disconnect()
+      }
     }
   }, [])
 
   if (headings.length === 0) {
-    return null
+    return (
+      <div className={cn("text-sm text-muted-foreground", className)}>
+        <div className="font-semibold mb-2">ON THIS PAGE</div>
+        <p className="text-xs">No hay secciones disponibles</p>
+      </div>
+    )
   }
 
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>, id: string) => {
     e.preventDefault()
-    const element = document.getElementById(id)
-    if (element) {
-      const offset = 100
-      const elementPosition = element.getBoundingClientRect().top
-      const offsetPosition = elementPosition + window.pageYOffset - offset
+    
+    // Update active ID immediately for visual feedback
+    setActiveId(id)
+    
+    // Find the element and scroll to it
+    const scrollToElement = (attempts = 0): void => {
+      const element = document.getElementById(id)
+      
+      if (element) {
+        // Calculate scroll position with offset for fixed headers
+        const headerOffset = 120
+        const elementTop = element.getBoundingClientRect().top + window.pageYOffset
+        const offsetPosition = elementTop - headerOffset
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: "smooth",
-      })
+        // Update URL hash
+        window.history.pushState(null, "", `#${id}`)
+        
+        // Smooth scroll to the calculated position
+        window.scrollTo({
+          top: Math.max(0, offsetPosition),
+          behavior: "smooth",
+        })
+        
+        return
+      }
+      
+      // Retry if element not found (might still be loading)
+      if (attempts < 10) {
+        setTimeout(() => scrollToElement(attempts + 1), 50)
+      }
     }
+    
+    scrollToElement()
   }
 
   return (
-    <nav className={cn("sticky top-24 space-y-2", className)}>
-      <div className="text-sm font-semibold text-muted-foreground mb-4">
+    <nav className={cn("space-y-2", className)}>
+      <div className="text-sm font-semibold text-foreground mb-4">
         ON THIS PAGE
       </div>
-      <ul className="space-y-1">
-        {headings.map((heading) => (
-          <li key={heading.id}>
-            <a
-              href={`#${heading.id}`}
-              onClick={(e) => handleClick(e, heading.id)}
-              className={cn(
-                "block text-sm transition-colors hover:text-foreground",
-                heading.level === 3 && "ml-4",
-                heading.level === 4 && "ml-8",
-                activeId === heading.id
-                  ? "text-foreground font-medium"
-                  : "text-muted-foreground"
-              )}
-            >
-              {heading.text}
-            </a>
-          </li>
-        ))}
-      </ul>
+      <ScrollArea className="h-[calc(100vh-180px)]">
+        <ul className="space-y-1 pr-4">
+          {headings.map((heading) => (
+            <li key={heading.id}>
+              <a
+                href={`#${heading.id}`}
+                onClick={(e) => handleClick(e, heading.id)}
+                className={cn(
+                  "block text-sm transition-colors hover:text-foreground py-1",
+                  heading.level === 3 && "ml-3 pl-2 border-l-2 border-border",
+                  heading.level === 4 && "ml-6 pl-2 border-l-2 border-border",
+                  activeId === heading.id
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground"
+                )}
+              >
+                {heading.text}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </ScrollArea>
     </nav>
   )
 }

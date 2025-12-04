@@ -9,22 +9,24 @@ export default function DocumentationLayout({
 }) {
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar */}
+      {/* Left Sidebar - Pages Navigation */}
       <DocSidebar />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col overflow-hidden lg:ml-64">
+      {/* Main content area */}
+      <div className="flex-1 flex overflow-hidden lg:ml-64">
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           <div className="max-w-4xl mx-auto px-6 py-12 lg:px-8">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-12">
-              <div className="min-w-0">{children}</div>
-              <aside className="hidden lg:block">
-                <TableOfContents />
-              </aside>
-            </div>
+            {children}
           </div>
         </main>
+
+        {/* Right Sidebar - Table of Contents */}
+        <aside className="hidden xl:block w-64 border-l border-border bg-card">
+          <div className="sticky top-0 p-6">
+            <TableOfContents />
+          </div>
+        </aside>
       </div>
     </div>
   )
