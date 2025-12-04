@@ -1,97 +1,92 @@
 import { Button } from "@/components/ui/button"
-import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Building2, Users, Camera, MessageSquare } from "lucide-react"
+import { Building2, Monitor, BookOpen, ArrowRight } from "lucide-react"
 import Link from "next/link"
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="container mx-auto px-4 py-16">
-        <div className="text-center mb-16">
-          <Building2 className="mx-auto h-16 w-16 text-blue-600 mb-4" />
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
+    <div className="min-h-screen bank-gradient flex flex-col">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-12">
+        {/* Welcome section */}
+        <div className="text-center mb-12 animate-fade-in">
+          <div className="w-20 h-20 rounded-full bg-primary flex items-center justify-center mb-6 mx-auto shadow-glow">
+            <Building2 className="w-10 h-10 text-primary-foreground" />
+          </div>
+          <h1 className="font-display text-5xl font-bold text-foreground mb-4">
             Sistema de Identificación Bancaria
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
             Automatiza la identificación de clientes mediante reconocimiento facial 
             e integra un asistente virtual para mejorar la experiencia del usuario
           </p>
         </div>
 
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-16">
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <Users className="h-8 w-8 text-blue-600 mb-2" />
-              <CardTitle className="text-lg">Gestión de Clientes</CardTitle>
-              <CardDescription>
-                Registro, autenticación y administración de clientes
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <Camera className="h-8 w-8 text-green-600 mb-2" />
-              <CardTitle className="text-lg">Reconocimiento Facial</CardTitle>
-              <CardDescription>
-                Identificación automática mediante cámaras IP
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <MessageSquare className="h-8 w-8 text-purple-600 mb-2" />
-              <CardTitle className="text-lg">Chatbot Inteligente</CardTitle>
-              <CardDescription>
-                Asistente virtual con base de conocimiento
-              </CardDescription>
-            </CardHeader>
-          </Card>
-
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <Building2 className="h-8 w-8 text-orange-600 mb-2" />
-              <CardTitle className="text-lg">Multi-sucursal</CardTitle>
-              <CardDescription>
-                Gestión centralizada de múltiples ubicaciones
-              </CardDescription>
-            </CardHeader>
-          </Card>
-        </div>
-
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-semibold text-gray-900 mb-8">
-            Accede al Sistema
-          </h2>
-          
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-            <Button asChild size="lg" className="w-full sm:w-auto">
-              <Link href="/auth/signin">
-                Panel de Administración
-              </Link>
-            </Button>
-            
-            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-              <Link href="/client/login">
-                Área de Cliente
-              </Link>
-            </Button>
-            
-            <Button asChild variant="outline" size="lg" className="w-full sm:w-auto">
-              <Link href="/kiosk">
+        {/* Main access cards */}
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl w-full mb-8">
+          {/* Kiosk Card */}
+          <Link href="/kiosk" className="group">
+            <div className="bank-card-elevated p-8 h-full flex flex-col items-center text-center hover:shadow-xl transition-all duration-300 hover:scale-105 animate-fade-in">
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 shadow-glow group-hover:shadow-glow-lg transition-shadow">
+                <Monitor className="w-8 h-8 text-primary-foreground" />
+              </div>
+              <h2 className="font-display text-2xl font-bold text-foreground mb-3">
                 Módulo Kiosco
-              </Link>
-            </Button>
-          </div>
+              </h2>
+              <p className="text-muted-foreground mb-6 flex-grow">
+                Acceso público para reconocimiento facial, registro de clientes y atención automatizada
+              </p>
+              <Button variant="bank" size="lg" className="w-full group-hover:gap-2 transition-all">
+                Acceder al Kiosco
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </div>
+          </Link>
+
+          {/* Admin Card */}
+          <Link href="/auth/signin" className="group">
+            <div className="bank-card-elevated p-8 h-full flex flex-col items-center text-center hover:shadow-xl transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: "0.1s" }}>
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 shadow-glow group-hover:shadow-glow-lg transition-shadow">
+                <Building2 className="w-8 h-8 text-primary-foreground" />
+              </div>
+              <h2 className="font-display text-2xl font-bold text-foreground mb-3">
+                Panel de Administración
+              </h2>
+              <p className="text-muted-foreground mb-6 flex-grow">
+                Gestión completa del sistema: clientes, cámaras, sucursales, métricas y configuración
+              </p>
+              <Button variant="bank" size="lg" className="w-full group-hover:gap-2 transition-all">
+                Acceder al Admin
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </div>
+          </Link>
+
+          {/* Documentation Card */}
+          <Link href="/documentation" className="group">
+            <div className="bank-card-elevated p-8 h-full flex flex-col items-center text-center hover:shadow-xl transition-all duration-300 hover:scale-105 animate-fade-in" style={{ animationDelay: "0.2s" }}>
+              <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 shadow-glow group-hover:shadow-glow-lg transition-shadow">
+                <BookOpen className="w-8 h-8 text-primary-foreground" />
+              </div>
+              <h2 className="font-display text-2xl font-bold text-foreground mb-3">
+                Documentación
+              </h2>
+              <p className="text-muted-foreground mb-6 flex-grow">
+                Guías completas de arquitectura, integración, despliegue y uso del sistema
+              </p>
+              <Button variant="bank" size="lg" className="w-full group-hover:gap-2 transition-all">
+                Ver Documentación
+                <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </div>
+          </Link>
         </div>
 
-        <div className="mt-16 text-center text-gray-500">
-          <p className="text-sm">
+        {/* Footer info */}
+        <div className="mt-12 text-center animate-fade-in" style={{ animationDelay: "0.3s" }}>
+          <p className="text-sm text-muted-foreground">
             Sistema desarrollado con Next.js 15, TypeScript, Prisma y PostgreSQL
           </p>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
