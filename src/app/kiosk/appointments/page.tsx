@@ -64,10 +64,10 @@ function KioskAppointmentsContent() {
       const fetchClientData = async () => {
         try {
           const response = await fetch(`/api/kiosk/client/${clientId}`)
-          let data: any = null
+          let data: { id?: string; name?: string; email?: string; message?: string } | null = null
           try {
             data = await response.json()
-          } catch (e) {
+          } catch {
             throw new Error(`Failed to parse server response (${response.status})`)
           }
 
@@ -93,6 +93,30 @@ function KioskAppointmentsContent() {
       fetchClientData()
     }
   }, [session, status, clientId, router, queryClientId])
+
+  // Fetch available slots when date changes
+  useEffect(() => {
+    if (date) {
+      const fetchSlots = async () => {
+        try {
+          const dateStr = format(date, 'yyyy-MM-dd')
+          const response = await fetch(`/api/kiosk/appointments/available-slots?date=${dateStr}`)
+          const data = await response.json()
+          
+          if (response.ok) {
+            setAvailableSlots(data.availableSlots || [])
+            setOccupiedSlots(data.occupiedSlots || [])
+          }
+        } catch (err) {
+          console.error('Error al obtener horarios disponibles:', err)
+        }
+      }
+      fetchSlots()
+    } else {
+      setAvailableSlots([])
+      setOccupiedSlots([])
+    }
+  }, [date])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -194,30 +218,6 @@ function KioskAppointmentsContent() {
       </div>
     )
   }
-
-  // Fetch available slots when date changes
-  useEffect(() => {
-    if (date) {
-      const fetchSlots = async () => {
-        try {
-          const dateStr = format(date, 'yyyy-MM-dd')
-          const response = await fetch(`/api/kiosk/appointments/available-slots?date=${dateStr}`)
-          const data = await response.json()
-          
-          if (response.ok) {
-            setAvailableSlots(data.availableSlots || [])
-            setOccupiedSlots(data.occupiedSlots || [])
-          }
-        } catch (err) {
-          console.error('Error al obtener horarios disponibles:', err)
-        }
-      }
-      fetchSlots()
-    } else {
-      setAvailableSlots([])
-      setOccupiedSlots([])
-    }
-  }, [date])
 
   // Horarios disponibles (9 AM a 6 PM en intervalos de 30 minutos)
   const allTimes: string[] = []

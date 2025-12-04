@@ -12,7 +12,7 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string; action: string } }
+  { params }: { params: Promise<{ id: string; action: string }> }
 ) {
   try {
     // Check authentication and admin role
@@ -24,7 +24,7 @@ export async function POST(
       )
     }
 
-    const { id, action } = params
+    const { id, action } = await params
     const body = await request.json()
     const { notes } = body
 

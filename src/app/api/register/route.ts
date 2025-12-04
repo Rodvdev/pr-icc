@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
       const encodings = Array.isArray(body.encodings) ? body.encodings : null
       if (encodings && encodings.length > 0) {
         for (const e of encodings) {
-          const vec = Array.isArray(e) ? e.map((n: any) => Number(n)) : null
+          const vec = Array.isArray(e) ? e.map((n: unknown) => Number(n)) : null
           if (!vec || vec.length === 0) continue
           await prisma.facialProfile.create({
             data: {

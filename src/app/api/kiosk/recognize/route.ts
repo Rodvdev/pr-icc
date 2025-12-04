@@ -36,18 +36,22 @@ export async function POST(request: Request) {
       include: { client: true }
     })
 
-    let best = { profile: null as any, distance: Number.POSITIVE_INFINITY }
+    let best: {
+      profile: { id: string; clientId: string; client: { name: string | null } | null } | null
+      distance: number
+    } = { profile: null, distance: Number.POSITIVE_INFINITY }
 
     for (const p of profiles) {
       // embedding stored as { vector: [...] } or directly as array
       let vec: number[] | undefined
       try {
-        if (p.embedding && Array.isArray((p.embedding as any).vector)) {
-          vec = (p.embedding as any).vector as number[]
-        } else if (p.embedding && Array.isArray(p.embedding as any)) {
-          vec = p.embedding as number[]
+        const embedding = p.embedding as unknown
+        if (embedding && typeof embedding === 'object' && 'vector' in embedding && Array.isArray((embedding as { vector: unknown }).vector)) {
+          vec = (embedding as { vector: number[] }).vector
+        } else if (Array.isArray(embedding)) {
+          vec = embedding as number[]
         }
-      } catch (err) {
+      } catch {
         vec = undefined
       }
 
@@ -82,8 +86,8 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, recognized: false, distance: best.distance, threshold: THRESHOLD })
-  } catch (err) {
-    console.error('[API] /api/kiosk/recognize error:', err)
+  } catch {
+    console.error('[API] /api/kiosk/recognize error')
     return NextResponse.json({ ok: false, message: 'Internal server error' }, { status: 500 })
   }
 }

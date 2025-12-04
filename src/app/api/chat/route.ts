@@ -122,10 +122,11 @@ export async function POST(req: NextRequest) {
     // Get relevant context from FAQs/QA pairs
     const context = await chatbotService.getRelevantContext(sanitizedMessage)
     
-    // Generate response using context
+    // Generate response using context and client data (if available)
     const chatResponse = await chatbotService.generateResponse(
       sanitizedMessage,
-      context
+      context,
+      clientId
     )
 
     intent = chatResponse.intent
@@ -154,13 +155,19 @@ export async function POST(req: NextRequest) {
     const latency = Date.now() - startTime
     success = true
 
-    // Record metrics with sessionId
+    // Record metrics with sessionId and extended data
     await chatbotService.recordMetrics({
       latency,
       success: true,
       intent: chatResponse.intent,
       usedContext: context.faqs.length + context.qaPairs.length > 0,
       contextItems: context.faqs.length + context.qaPairs.length,
+      usedClientData: chatResponse.usedClientData || false,
+      usedOpenAI: chatResponse.usedOpenAI || false,
+      promptTokens: chatResponse.usage?.promptTokens,
+      completionTokens: chatResponse.usage?.completionTokens,
+      totalTokens: chatResponse.usage?.totalTokens,
+      estimatedCost: chatResponse.usage?.estimatedCost,
       sessionId: sessionId,
       clientId: clientId,
       timestamp: new Date()
@@ -177,7 +184,10 @@ export async function POST(req: NextRequest) {
           sources: chatResponse.sources,
           timestamp: new Date().toISOString(),
           latency: `${latency}ms`,
-          contextUsed: context.faqs.length + context.qaPairs.length > 0
+          contextUsed: context.faqs.length + context.qaPairs.length > 0,
+          usedClientData: chatResponse.usedClientData || false,
+          usedOpenAI: chatResponse.usedOpenAI || false,
+          usage: chatResponse.usage
         }
       })
     )

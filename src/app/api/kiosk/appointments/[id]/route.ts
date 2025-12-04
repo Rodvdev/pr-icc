@@ -46,7 +46,11 @@ export async function PATCH(
       )
     }
 
-    const updateData: any = {}
+    const updateData: {
+      scheduledAt?: Date
+      purpose?: string
+      notes?: string | null
+    } = {}
 
     // Si se está reprogramando la fecha/hora
     if (scheduledAt) {

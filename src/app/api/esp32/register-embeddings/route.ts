@@ -3,7 +3,7 @@ import { spawn } from 'child_process'
 import path from 'path'
 import fs from 'fs'
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
   const body = await request.json().catch(() => ({}))
   const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null
   const encodings = Array.isArray(body.encodings) ? body.encodings : null
@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   if (fs.existsSync(venvPythonWin)) pythonExe = venvPythonWin
   else if (fs.existsSync(venvPythonUnix)) pythonExe = venvPythonUnix
 
-  return new Promise((resolve) => {
+  return new Promise<NextResponse>((resolve) => {
     const proc = spawn(pythonExe, [scriptPath], { cwd: path.dirname(scriptPath) })
     let out = ''
     let err = ''

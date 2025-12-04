@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { faqSearch, qaSearch } from '@/lib/mcp'
-import { Prisma } from '@prisma/client'
+import { chatbotService } from '@/services/chatbot.service'
+import { sanitizeInput } from '@/lib/security'
 
 /**
  * POST /api/kiosk/chat
@@ -37,79 +37,94 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // Guardar mensaje del cliente
-    await prisma.chatMessage.create({
-      data: {
-        sessionId,
-        actor: 'CLIENT',
-        content: message
-      }
-    })
-
-    // Buscar respuesta en base de conocimiento
-    let response = ''
-    let metadata: Record<string, unknown> = {}
-
-    try {
-      const lowerMessage = message.toLowerCase()
-      const isAboutHours = lowerMessage.includes('horario') || 
-                           lowerMessage.includes('hora') || 
-                           lowerMessage.includes('abierto') || 
-                           lowerMessage.includes('cerrado') ||
-                           lowerMessage.includes('atención') ||
-                           lowerMessage.includes('atender')
-
-      // Solo responder si es sobre horarios
-      if (isAboutHours) {
-        // Buscar en FAQs relacionadas con horarios
-        const faqResults = await faqSearch(message, ['horarios', 'horario', 'atención'], 3)
-        
-        // Buscar en QA pairs relacionadas con horarios
-        const qaResults = await qaSearch(message, 3)
-
-        // Si hay resultados sobre horarios, usar el más relevante
-        if (faqResults.items.length > 0 && faqResults.items[0].relevance > 0.6) {
-          response = faqResults.items[0].answer
-          metadata = {
-            source: 'faq',
-            faqId: faqResults.items[0].id,
-            relevance: faqResults.items[0].relevance
-          }
-        } else if (qaResults.items.length > 0 && qaResults.items[0].relevance > 0.6) {
-          response = qaResults.items[0].answer
-          metadata = {
-            source: 'qa',
-            qaId: qaResults.items[0].id,
-            relevance: qaResults.items[0].relevance
-          }
-        } else {
-          // Respuesta por defecto sobre horarios
-          response = getDefaultResponse(message)
-          metadata = { source: 'default' }
-        }
-      } else {
-        // Si no es sobre horarios, indicar que solo puede ayudar con horarios
-        response = getDefaultResponse(message)
-        metadata = { source: 'default' }
-      }
-    } catch (error) {
-      console.error('Error buscando respuesta:', error)
-      response = 'Lo siento, tuve un problema al procesar tu pregunta sobre horarios. ¿Podrías reformularla?'
-      metadata = { error: true }
+    // Sanitize input
+    const sanitizedMessage = sanitizeInput(message)
+    
+    if (sanitizedMessage.length < 3) {
+      return NextResponse.json(
+        { error: 'El mensaje es muy corto (mínimo 3 caracteres)' },
+        { status: 400 }
+      )
     }
 
-    // Guardar respuesta del bot
-    await prisma.chatMessage.create({
-      data: {
-        sessionId,
-        actor: 'BOT',
-        content: response,
-        metadata: metadata as Prisma.InputJsonValue
-      }
-    })
+    if (sanitizedMessage.length > 1000) {
+      return NextResponse.json(
+        { error: 'El mensaje es muy largo (máximo 1000 caracteres)' },
+        { status: 400 }
+      )
+    }
+
+    const startTime = Date.now()
+
+    // Get relevant context from FAQs/QA pairs
+    const context = await chatbotService.getRelevantContext(sanitizedMessage)
+    
+    // Generate response using chatbot service (with OpenAI if configured)
+    const chatResponse = await chatbotService.generateResponse(
+      sanitizedMessage,
+      context,
+      clientId || null
+    )
+
+    // Save chat interaction
+    try {
+      await chatbotService.saveChatInteraction(
+        clientId || null,
+        sanitizedMessage,
+        chatResponse.response,
+        chatResponse.intent,
+        {
+          confidence: chatResponse.confidence,
+          sources: chatResponse.sources,
+          contextItems: context.faqs.length + context.qaPairs.length
+        }
+      )
+    } catch (dbError) {
+      console.error('[Kiosk Chat] Failed to save chat interaction:', dbError)
+    }
+
+    // Calculate latency
+    const latency = Date.now() - startTime
+
+    // Record metrics
+    try {
+      await chatbotService.recordMetrics({
+        latency,
+        success: true,
+        intent: chatResponse.intent,
+        usedContext: context.faqs.length + context.qaPairs.length > 0,
+        contextItems: context.faqs.length + context.qaPairs.length,
+        usedClientData: chatResponse.usedClientData || false,
+        usedOpenAI: chatResponse.usedOpenAI || false,
+        promptTokens: chatResponse.usage?.promptTokens,
+        completionTokens: chatResponse.usage?.completionTokens,
+        totalTokens: chatResponse.usage?.totalTokens,
+        estimatedCost: chatResponse.usage?.estimatedCost,
+        sessionId: sessionId,
+        clientId: clientId || null,
+        timestamp: new Date()
+      })
+    } catch (metricsError) {
+      console.error('[Kiosk Chat] Failed to record metrics:', metricsError)
+    }
+
+    // Build metadata
+    const metadata: Record<string, unknown> = {
+      intent: chatResponse.intent,
+      confidence: chatResponse.confidence,
+      sources: chatResponse.sources,
+      usedClientData: chatResponse.usedClientData || false,
+      usedOpenAI: chatResponse.usedOpenAI || false,
+      latency: `${latency}ms`,
+      timestamp: new Date().toISOString()
+    }
+
+    if (chatResponse.usage) {
+      metadata.usage = chatResponse.usage
+    }
 
     return NextResponse.json({
-      response,
+      response: chatResponse.response,
       metadata
     })
 
@@ -125,37 +140,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * Respuestas por defecto - solo sobre horarios de atención
- */
-function getDefaultResponse(message: string): string {
-  const lowerMessage = message.toLowerCase()
-
-  // Saludos
-  if (lowerMessage.includes('hola') || lowerMessage.includes('buenos días') || lowerMessage.includes('buenas tardes') || lowerMessage.includes('buenas noches')) {
-    return '¡Hola! Bienvenido. Solo puedo ayudarte con información sobre nuestros horarios de atención. ¿Cuál es tu consulta sobre horarios?'
-  }
-
-  // Despedidas
-  if (lowerMessage.includes('gracias') || lowerMessage.includes('adios') || lowerMessage.includes('chau')) {
-    return 'De nada. Si necesitas más información sobre horarios, no dudes en consultarme. ¡Que tengas un excelente día!'
-  }
-
-  // Consultas sobre horarios
-  if (lowerMessage.includes('horario') || 
-      lowerMessage.includes('hora') || 
-      lowerMessage.includes('abierto') || 
-      lowerMessage.includes('cerrado') ||
-      lowerMessage.includes('atención') ||
-      lowerMessage.includes('atender') ||
-      lowerMessage.includes('cuándo') ||
-      lowerMessage.includes('disponible')) {
-    return 'Nuestros horarios de atención son de lunes a viernes de 9:00 AM a 6:00 PM, y sábados de 9:00 AM a 1:00 PM. ¿Hay algo más sobre horarios en lo que pueda ayudarte?'
-  }
-
-  // Si no es sobre horarios, indicar que solo puede ayudar con horarios
-  return 'Solo puedo ayudarte con información sobre nuestros horarios de atención. Nuestros horarios son de lunes a viernes de 9:00 AM a 6:00 PM, y sábados de 9:00 AM a 1:00 PM. Para otras consultas, por favor dirígete al mostrador de atención al cliente.'
-}
 
 /**
  * GET /api/kiosk/chat

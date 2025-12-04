@@ -11,8 +11,6 @@ export async function GET() {
 
   const reader = res.body.getReader()
   const chunks: Uint8Array[] = []
-  let foundStart = false
-  let foundEnd = false
   // read up to a reasonable limit
   let total = 0
   while (true) {

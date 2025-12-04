@@ -449,7 +449,7 @@ function KioskAppointmentsManageContent() {
                 </div>
                 {occupiedSlots.length > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    Los horarios marcados como "(Ocupado)" no están disponibles
+                    Los horarios marcados como &quot;(Ocupado)&quot; no están disponibles
                   </p>
                 )}
               </div>

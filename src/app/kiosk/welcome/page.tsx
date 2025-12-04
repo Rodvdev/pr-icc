@@ -54,10 +54,10 @@ function KioskWelcomeContent() {
       const fetchClientData = async () => {
         try {
           const response = await fetch(`/api/kiosk/client/${clientId}`)
-          let data: any = null
+          let data: { id?: string; name?: string; email?: string; message?: string } | null = null
           try {
             data = await response.json()
-          } catch (e) {
+          } catch {
             // JSON parse failed
             throw new Error(`Failed to parse server response (${response.status})`)
           }

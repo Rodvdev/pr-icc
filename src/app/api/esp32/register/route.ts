@@ -3,7 +3,7 @@ import { spawn } from 'child_process'
 import { tmpdir } from 'os'
 import path from 'path'
 
-export async function POST(request: Request) {
+export async function POST(request: Request): Promise<NextResponse> {
   const body = await request.json().catch(() => ({}))
   const name = typeof body.name === 'string' && body.name.trim() ? body.name.trim() : null
   const samples = typeof body.samples === 'number' && body.samples > 0 ? body.samples : 3
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const pythonExe = process.env.PYTHON_PATH ?? 'python'
   const args = [scriptPath, '--name', name, '--samples', String(samples)]
 
-  return new Promise((resolve) => {
+  return new Promise<NextResponse>((resolve) => {
     const proc = spawn(pythonExe, args, { cwd: path.dirname(scriptPath) })
     let out = ''
     let err = ''

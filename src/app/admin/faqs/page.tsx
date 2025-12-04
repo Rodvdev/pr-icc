@@ -118,39 +118,10 @@ export default function FAQsPage() {
         </div>
       </div>
 
-      <div className="grid gap-4">
-        {filtered.map((faq) => (
-          <div key={faq.id} className="bank-card p-6">
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="font-semibold text-foreground">{faq.title}</h3>
-                  <span className={cn(
-                    "text-xs font-medium px-2 py-1 rounded-full",
-                    faq.status === "PUBLISHED" 
-                      ? "bg-bank-success/10 text-bank-success" 
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    {faq.status === "PUBLISHED" ? "Publicado" : "Borrador"}
-                  </span>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">{faq.category || "General"}</p>
-                <p className="text-sm text-muted-foreground">{new Date(faq.updatedAt).toLocaleString()}</p>
-              </div>
-              <div className="flex gap-2">
-                {faq.status === "DRAFT" && (
-                  <Button size="sm" variant="outline" onClick={() => publishFAQ(faq.id)}>
-                    <CheckCircle className="h-4 w-4 mr-1" /> Publicar
-                  </Button>
-                )}
-                <Button size="sm" variant="ghost" onClick={() => openEditor(faq)}>
-                  Editar
-                </Button>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      <div className="grid lg:grid-cols-12 gap-4">
+        <Card className="lg:col-span-7 xl:col-span-8">
+          <CardContent className="pt-6">
+            <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Pregunta</TableHead>

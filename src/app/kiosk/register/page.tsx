@@ -1,6 +1,39 @@
 "use client"
 
 import { useRef, useState, useEffect } from "react"
+
+interface FaceDetectionBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+interface FaceAPI {
+  detectSingleFace: (input: HTMLImageElement, options: unknown) => {
+    withFaceLandmarks: () => {
+      withFaceDescriptor: () => Promise<{
+        detection: { box: FaceDetectionBox; score: number }
+        descriptor: Float32Array | number[]
+      } | null>
+    }
+  }
+  nets: {
+    tinyFaceDetector: { load: (url: string) => Promise<void> }
+    faceLandmark68Net: { load: (url: string) => Promise<void> }
+    faceRecognitionNet: { load: (url: string) => Promise<void> }
+  }
+  TinyFaceDetectorOptions: new (options: { inputSize: number; scoreThreshold: number }) => unknown
+}
+
+declare global {
+  interface Window {
+    tf?: unknown
+    FaceAPI?: FaceAPI
+    faceapi?: FaceAPI
+    __faceapi?: FaceAPI
+  }
+}
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -64,7 +97,7 @@ export default function KioskRegisterPage() {
   const offscreenRef = useRef<HTMLCanvasElement | null>(null)
   const [faceApiReady, setFaceApiReady] = useState(false)
   const detectionLoopRef = useRef<number | null>(null)
-  const [lastDetection, setLastDetection] = useState<{box: any; score: number} | null>(null)
+  const [lastDetection, setLastDetection] = useState<{box: FaceDetectionBox; score: number} | null>(null)
    const [savedEncodings, setSavedEncodings] = useState<number[][] | null>(null)
     const ESP32_STREAM_URL = process.env.NEXT_PUBLIC_ESP32_STREAM_URL ?? 'http://192.168.122.116:81/stream'
     const ESP32_IP = process.env.NEXT_PUBLIC_ESP32_IP ?? '192.168.122.116'
@@ -88,7 +121,7 @@ export default function KioskRegisterPage() {
       if (!useESP32) return
       try {
         // Load TensorFlow.js if not present
-        if (!(window as any).tf) {
+        if (!window.tf) {
           await new Promise<void>((resolve, reject) => {
             const s = document.createElement('script')
             s.src = 'https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.11.0'
@@ -100,13 +133,13 @@ export default function KioskRegisterPage() {
         }
 
         // Load @vladmandic/face-api if not present
-        if (!(window as any).FaceAPI && !(window as any).faceapi) {
+        if (!window.FaceAPI && !window.faceapi) {
           await new Promise<void>((resolve, reject) => {
             const s = document.createElement('script')
             s.src = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.min.js'
             s.async = true
             s.onload = () => {
-              console.log('face-api loaded, FaceAPI =', (window as any).FaceAPI)
+              console.log('face-api loaded, FaceAPI =', window.FaceAPI)
               resolve()
             }
             s.onerror = (e) => {
@@ -118,13 +151,13 @@ export default function KioskRegisterPage() {
         }
 
         // Detect which global the library exposed
-        const globalFaceApi = (window as any).FaceAPI || (window as any).faceapi || (window as any)['face-api'] || null
+        const globalFaceApi = window.FaceAPI || window.faceapi || null
         if (!globalFaceApi) {
           console.error('face-api loaded but no global export found on window (FaceAPI / faceapi)')
           return
         }
         // normalize to a single alias so the rest of the code can use it
-        ;(window as any).__faceapi = globalFaceApi
+        window.__faceapi = globalFaceApi
         
         // Load the face detection models from CDN
         console.log('Loading face-api models...')
@@ -159,7 +192,7 @@ export default function KioskRegisterPage() {
           setLastDetection(null)
           return
         }
-        const FaceAPI = (window as any).__faceapi || (window as any).FaceAPI || (window as any).faceapi || null
+        const FaceAPI = window.__faceapi || window.FaceAPI || window.faceapi || null
         if (!FaceAPI) {
           console.warn('FaceAPI not available')
           setLastDetection(null)
@@ -225,9 +258,9 @@ export default function KioskRegisterPage() {
       setErrors({ photoData: 'Modelo no cargado aún. Espera unos segundos.' })
       return
     }
-    const FaceAPI = (window as any).__faceapi || (window as any).FaceAPI || (window as any).faceapi || null
+    const FaceAPI = window.__faceapi || window.FaceAPI || window.faceapi || null
     if (!FaceAPI) {
-      console.error('face-api no está disponible. window.__faceapi, FaceAPI, faceapi =', (window as any).__faceapi, (window as any).FaceAPI, (window as any).faceapi)
+      console.error('face-api no está disponible. window.__faceapi, FaceAPI, faceapi =', window.__faceapi, window.FaceAPI, window.faceapi)
       setErrors({ photoData: 'Librería de reconocimiento no cargada. Recarga la página.' })
       return
     }
@@ -361,7 +394,7 @@ export default function KioskRegisterPage() {
       try {
         if (Array.isArray(data.encodings) && data.encodings.length > 0) {
           // ensure arrays of numbers
-          const encs = data.encodings.map((e: any) => Array.isArray(e) ? e.map((n: any) => Number(n)) : [])
+          const encs = data.encodings.map((e: unknown) => Array.isArray(e) ? e.map((n: unknown) => Number(n)) : [])
           setSavedEncodings(encs)
         }
       } catch (e) {
@@ -766,7 +799,7 @@ export default function KioskRegisterPage() {
                     {useESP32 && ESP32_STREAM_URL ? (
                       <div className="w-full h-full relative">
                         <img
-                          ref={imgRef as any}
+                          ref={imgRef}
                           src={`${ESP32_STREAM_URL}?r=${esp32Reload}`}
                           crossOrigin="anonymous"
                           className="w-full h-full object-cover"
@@ -774,7 +807,7 @@ export default function KioskRegisterPage() {
                         />
                         {/* overlay canvas for drawing box/score (always visible when window active) */}
                         <canvas
-                          ref={overlayRef as any}
+                          ref={overlayRef}
                           className="absolute left-0 top-0 w-full h-full pointer-events-none z-40"
                           aria-hidden="true"
                         />
