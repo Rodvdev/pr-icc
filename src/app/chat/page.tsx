@@ -24,6 +24,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChatContext } from "@/contexts/chat-context"
+import { ChatConfigStatus } from "@/components/chat/chat-config-status"
 
 const quickReplies = [
   "Horarios de atención",
@@ -225,6 +226,9 @@ export default function ChatPage() {
               <CardContent className="flex-1 p-0">
                 <ScrollArea className="h-full p-3 sm:p-6" ref={scrollRef}>
                   <div className="space-y-4 sm:space-y-6">
+                    {/* Configuration Status Alert */}
+                    <ChatConfigStatus />
+                    
                     {messages.map((message) => (
                       <div
                         key={message.id}

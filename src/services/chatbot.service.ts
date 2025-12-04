@@ -79,6 +79,8 @@ export interface ChatMetrics {
   errorMessage?: string
   sessionId?: string | null
   clientId?: string | null
+  handOffRequested?: boolean
+  handOffReason?: string
   timestamp: Date
 }
 
@@ -155,16 +157,44 @@ export class ChatbotService {
           )
         } catch (openAIError) {
           console.error('[ChatbotService] OpenAI error, falling back to FAQ/QA:', openAIError)
+          // If it's a configuration error, include a helpful message
+          if (openAIError instanceof Error && openAIError.message.includes('not configured')) {
+            // Fall through to FAQ/QA fallback with a note
+          }
           // Fall through to FAQ/QA fallback
         }
+      } else {
+        // Log that OpenAI is not configured (for admin monitoring)
+        console.log('[ChatbotService] OpenAI not configured, using FAQ/QA fallback')
       }
 
       // Fallback to FAQ/QA matching
+      // Convert ConsolidatedClientData to the expected format
+      const formattedClientData = clientData ? {
+        profile: clientData.profile ? {
+          fullName: clientData.profile.fullName,
+          email: clientData.profile.email,
+          phone: clientData.profile.phone ?? undefined,
+          status: clientData.profile.status
+        } : null,
+        recentVisits: (clientData.recentVisits || []).map(v => ({
+          date: v.date,
+          time: v.time,
+          branch: v.branch,
+          status: v.status
+        })),
+        upcomingAppointments: (clientData.upcomingAppointments || []).map(a => ({
+          scheduledAt: a.scheduledAt,
+          branch: a.branch,
+          purpose: a.purpose
+        }))
+      } : null
+      
       return await this.generateResponseFromContext(
         query,
         context,
         intentDetection,
-        clientData
+        formattedClientData
       )
     } catch (error) {
       console.error('[ChatbotService] Error generating response:', error)
@@ -251,7 +281,7 @@ export class ChatbotService {
     context: RelevantContext,
     intentDetection: { category: string; confidence: number; requiresClientData: boolean },
     clientData: {
-      profile?: { fullName?: string; email?: string; phone?: string; status?: string }
+      profile?: { fullName?: string; email?: string; phone?: string; status?: string } | null
       recentVisits?: Array<{ date?: string; time?: string; branch?: string; status?: string }>
       upcomingAppointments?: Array<{ scheduledAt: string | Date; branch?: { name?: string }; purpose?: string | null }>
     } | null
@@ -284,12 +314,13 @@ export class ChatbotService {
     // Try to use client data for personal queries
     else if (intentDetection.requiresClientData && clientData) {
       if (intentDetection.category === 'profile' && clientData.profile) {
-        response = `Tu información de perfil:\n- Nombre: ${clientData.profile.fullName}\n- Email: ${clientData.profile.email}${clientData.profile.phone ? `\n- Teléfono: ${clientData.profile.phone}` : ''}\n- Estado: ${clientData.profile.status}`
+        const profile = clientData.profile
+        response = `Tu información de perfil:\n- Nombre: ${profile.fullName || 'N/A'}\n- Email: ${profile.email || 'N/A'}${profile.phone ? `\n- Teléfono: ${profile.phone}` : ''}\n- Estado: ${profile.status || 'N/A'}`
         confidence = 0.9
-      } else if (intentDetection.category === 'visits' && clientData.recentVisits.length > 0) {
+      } else if (intentDetection.category === 'visits' && clientData.recentVisits && clientData.recentVisits.length > 0) {
         response = `Tus visitas recientes:\n${clientData.recentVisits.slice(0, 5).map((v) => `- ${v.date || ''} ${v.time || ''} en ${v.branch || ''} (${v.status || ''})`).join('\n')}`
         confidence = 0.9
-      } else if (intentDetection.category === 'appointments' && clientData.upcomingAppointments.length > 0) {
+      } else if (intentDetection.category === 'appointments' && clientData.upcomingAppointments && clientData.upcomingAppointments.length > 0) {
         response = `Tus citas programadas:\n${clientData.upcomingAppointments.map((a) => `- ${new Date(a.scheduledAt).toLocaleDateString('es-PE')} en ${a.branch?.name || ''} (${a.purpose || 'Consulta general'})`).join('\n')}`
         confidence = 0.9
       } else {
@@ -330,67 +361,149 @@ export class ChatbotService {
 
   /**
    * Get default response for queries without matching context
+   * Includes suggestions for reformulation and hand-off to human agent when appropriate
    */
   private getDefaultResponse(query: string): string {
     const lowerQuery = query.toLowerCase()
 
     // Keyword-based intent detection
     if (lowerQuery.includes('horario') || lowerQuery.includes('hora')) {
-      return 'Nuestro horario de atención es de lunes a viernes de 9:00 AM a 6:00 PM. ¿Necesitas información adicional?'
+      return 'Nuestro horario de atención es de lunes a viernes de 9:00 AM a 6:00 PM, y los sábados de 9:00 AM a 1:00 PM. ¿Necesitas información adicional sobre algún servicio específico?'
     }
     
-    if (lowerQuery.includes('ubicación') || lowerQuery.includes('dirección')) {
-      return 'Te puedo ayudar con información sobre nuestras ubicaciones. ¿Qué sede necesitas consultar?'
+    if (lowerQuery.includes('ubicación') || lowerQuery.includes('dirección') || lowerQuery.includes('sucursal')) {
+      return 'Te puedo ayudar con información sobre nuestras ubicaciones. ¿Qué sede necesitas consultar? También puedes preguntarme por direcciones específicas o cómo llegar.'
     }
     
-    if (lowerQuery.includes('contacto') || lowerQuery.includes('teléfono')) {
-      return 'Para contactarnos, puedes llamar a nuestro teléfono de atención o enviar un correo. ¿Deseas que te proporcione el número?'
+    if (lowerQuery.includes('contacto') || lowerQuery.includes('teléfono') || lowerQuery.includes('llamar')) {
+      return 'Para contactarnos directamente, puedes llamar a nuestro teléfono de atención o visitar una de nuestras sucursales. ¿Te gustaría que te proporcione más información sobre nuestros canales de contacto?'
     }
     
-    if (lowerQuery.includes('servicio') || lowerQuery.includes('atender')) {
-      return 'Ofrecemos diversos servicios. ¿Hay algo específico en lo que te pueda ayudar?'
+    if (lowerQuery.includes('servicio') || lowerQuery.includes('atender') || lowerQuery.includes('ofrecen')) {
+      return 'Ofrecemos diversos servicios bancarios. ¿Hay algo específico en lo que te pueda ayudar? Por ejemplo, puedo informarte sobre cuentas, préstamos, tarjetas, o servicios de atención al cliente.'
     }
 
-    // Generic response
-    return 'Hola, soy un asistente virtual. ¿En qué puedo ayudarte hoy? Puedo responder preguntas sobre horarios, servicios, ubicaciones y más.'
+    // Check if query seems complex or requires human assistance
+    const complexKeywords = [
+      'reclamo', 'queja', 'problema', 'error', 'no funciona', 'no puedo',
+      'ayuda urgente', 'emergencia', 'fraude', 'robo', 'perdí', 'olvidé',
+      'cancelar', 'suspender', 'bloquear', 'desactivar'
+    ]
+    
+    const requiresHuman = complexKeywords.some(keyword => lowerQuery.includes(keyword))
+    
+    if (requiresHuman) {
+      return `Entiendo que necesitas asistencia con un tema que requiere atención personalizada. Para brindarte el mejor servicio, te recomiendo hablar con uno de nuestros agentes humanos. ¿Te gustaría que te ayude a programar una cita o prefieres contactarnos directamente?`
+    }
+
+    // Check if query is too vague or unclear
+    const isVeryShort = query.trim().length < 10
+    const isUnclear = lowerQuery.match(/\b(que|qué|como|cómo|donde|dónde|cuando|cuándo|porque|por qué)\b/g)?.length === 1 && query.trim().length < 20
+
+    if (isVeryShort || isUnclear) {
+      return `Hola, soy tu asistente virtual. Para poder ayudarte mejor, ¿podrías ser más específico con tu consulta? Por ejemplo, puedes preguntarme sobre:
+      
+• Horarios de atención
+• Ubicaciones de sucursales
+• Servicios disponibles
+• Información sobre tu perfil (si estás autenticado)
+• Visitas y citas programadas
+
+¿En qué puedo ayudarte específicamente?`
+    }
+
+    // Generic response with reformulation suggestion
+    return `No estoy seguro de haber entendido completamente tu consulta. ¿Podrías reformularla de otra manera? 
+
+Puedo ayudarte con:
+• Información sobre horarios y ubicaciones
+• Consultas sobre servicios bancarios
+• Información de tu perfil y visitas (si estás autenticado)
+• Preguntas frecuentes sobre nuestros servicios
+
+Si tu consulta es más compleja o requiere atención personalizada, puedo ayudarte a conectarte con un agente humano. ¿Qué te gustaría hacer?`
   }
 
   /**
    * Save chat interaction to database
+   * 
+   * @param clientId - Client ID (if authenticated)
+   * @param message - User message
+   * @param response - Bot response
+   * @param intent - Detected intent
+   * @param metadata - Interaction metadata
+   * @param providedSessionId - Optional session ID from request (validated)
    */
   async saveChatInteraction(
     clientId: string | null,
     message: string,
     response: string,
     intent: string,
-    metadata: ChatInteractionMetadata
+    metadata: ChatInteractionMetadata,
+    providedSessionId?: string | null
   ): Promise<SaveChatInteractionResult> {
     try {
       // Find or create chat session
       let sessionId: string
       
-      const existingSession = clientId 
-        ? await prisma.chatSession.findFirst({
-            where: {
-              clientId,
-              endedAt: null
-            },
-            orderBy: {
-              startedAt: 'desc'
-            }
-          })
-        : null
-
-      if (existingSession) {
-        sessionId = existingSession.id
-      } else {
-        const newSession = await prisma.chatSession.create({
-          data: {
-            clientId,
-            tempVisitorId: clientId ? null : `temp_${Date.now()}`
+      // If sessionId is provided, validate it exists and is active
+      if (providedSessionId) {
+        const validatedSession = await prisma.chatSession.findUnique({
+          where: {
+            id: providedSessionId,
+            endedAt: null // Only accept active sessions
           }
         })
-        sessionId = newSession.id
+
+        if (validatedSession) {
+          // Verify clientId matches if both are provided
+          if (clientId && validatedSession.clientId && validatedSession.clientId !== clientId) {
+            // Session belongs to different client, create new session
+            const newSession = await prisma.chatSession.create({
+              data: {
+                clientId,
+                tempVisitorId: null
+              }
+            })
+            sessionId = newSession.id
+          } else {
+            sessionId = validatedSession.id
+          }
+        } else {
+          // Invalid or ended session, create new one
+          const newSession = await prisma.chatSession.create({
+            data: {
+              clientId,
+              tempVisitorId: clientId ? null : `temp_${Date.now()}`
+            }
+          })
+          sessionId = newSession.id
+        }
+      } else {
+        // No sessionId provided, find existing or create new
+        const existingSession = clientId 
+          ? await prisma.chatSession.findFirst({
+              where: {
+                clientId,
+                endedAt: null
+              },
+              orderBy: {
+                startedAt: 'desc'
+              }
+            })
+          : null
+
+        if (existingSession) {
+          sessionId = existingSession.id
+        } else {
+          const newSession = await prisma.chatSession.create({
+            data: {
+              clientId,
+              tempVisitorId: clientId ? null : `temp_${Date.now()}`
+            }
+          })
+          sessionId = newSession.id
+        }
       }
 
       // Save user message
@@ -425,7 +538,7 @@ export class ChatbotService {
   }
 
   /**
-   * Record chat metrics (extended with OpenAI usage data)
+   * Record chat metrics (extended with OpenAI usage data and hand-offs)
    */
   async recordMetrics(metrics: ChatMetrics): Promise<void> {
     try {
@@ -437,6 +550,8 @@ export class ChatbotService {
         completionTokens?: number
         totalTokens?: number
         estimatedCost?: number
+        handOffRequested?: boolean
+        handOffReason?: string
       } = {
         usedClientData: metrics.usedClientData || false,
         usedOpenAI: metrics.usedOpenAI || false,
@@ -454,6 +569,12 @@ export class ChatbotService {
       if (metrics.estimatedCost !== undefined) {
         metadata.estimatedCost = metrics.estimatedCost
       }
+      if (metrics.handOffRequested !== undefined) {
+        metadata.handOffRequested = metrics.handOffRequested
+      }
+      if (metrics.handOffReason) {
+        metadata.handOffReason = metrics.handOffReason
+      }
 
       await prisma.chatMetric.create({
         data: {
@@ -466,7 +587,6 @@ export class ChatbotService {
           contextItems: metrics.contextItems,
           errorMessage: metrics.errorMessage || null,
           timestamp: metrics.timestamp,
-          // Store extended metrics in metadata (we'll need to update schema or use existing metadata field)
         }
       })
     } catch (error) {
@@ -476,13 +596,93 @@ export class ChatbotService {
   }
 
   /**
+   * Record a hand-off request to human agent
+   */
+  async recordHandOff(
+    sessionId: string | null,
+    clientId: string | null,
+    reason?: string
+  ): Promise<void> {
+    try {
+      await this.recordMetrics({
+        latency: 0,
+        success: true,
+        intent: 'handoff',
+        usedContext: false,
+        contextItems: 0,
+        handOffRequested: true,
+        handOffReason: reason,
+        sessionId,
+        clientId,
+        timestamp: new Date()
+      })
+    } catch (error) {
+      console.error('[ChatbotService] Error recording hand-off:', error)
+    }
+  }
+
+  /**
+   * Get hand-off statistics
+   */
+  async getHandOffStats(clientId?: string) {
+    try {
+      const where = clientId ? { clientId } : {}
+
+      // Count hand-offs from chat messages with handOff metadata
+      const handOffMessages = await prisma.chatMessage.findMany({
+        where: {
+          ...(clientId ? {
+            session: {
+              clientId
+            }
+          } : {}),
+          actor: 'BOT',
+          metadata: {
+            path: ['handOff'],
+            equals: true
+          }
+        }
+      })
+
+      // Also count from metrics
+      const handOffMetrics = await prisma.chatMetric.findMany({
+        where: {
+          ...where,
+          intent: 'handoff'
+        }
+      })
+
+      return {
+        totalHandOffs: handOffMessages.length + handOffMetrics.length,
+        handOffMessages: handOffMessages.length,
+        handOffMetrics: handOffMetrics.length
+      }
+    } catch (error) {
+      console.error('[ChatbotService] Error getting hand-off stats:', error)
+      return {
+        totalHandOffs: 0,
+        handOffMessages: 0,
+        handOffMetrics: 0
+      }
+    }
+  }
+
+  /**
    * Get chat statistics
+   * Includes comprehensive metrics: latency, success rate, hand-offs, intent distribution, context usage
    */
   async getChatStats(clientId?: string) {
     try {
       const where = clientId ? { clientId } : {}
 
-      const [totalMessages, successfulMessages, totalSessions, avgLatency] = await Promise.all([
+      const [
+        totalMessages,
+        successfulMessages,
+        totalSessions,
+        avgLatency,
+        allMetrics,
+        handOffStats
+      ] = await Promise.all([
         // Total messages
         prisma.chatMessage.count({
           where: {
@@ -512,8 +712,52 @@ export class ChatbotService {
           _avg: {
             latency: true
           }
-        })
+        }),
+
+        // All metrics for detailed analysis
+        prisma.chatMetric.findMany({
+          where,
+          select: {
+            intent: true,
+            usedContext: true,
+            contextItems: true,
+            success: true
+          }
+        }),
+
+        // Hand-off statistics
+        this.getHandOffStats(clientId)
       ])
+
+      // Calculate intent distribution
+      const intentDistribution = allMetrics.reduce((acc, metric) => {
+        const intent = metric.intent || 'unknown'
+        acc[intent] = (acc[intent] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      // Calculate context usage statistics
+      const metricsWithContext = allMetrics.filter(m => m.usedContext)
+      const contextUsageRate = allMetrics.length > 0
+        ? Math.round((metricsWithContext.length / allMetrics.length) * 100)
+        : 0
+
+      // Calculate average context items used
+      const avgContextItems = allMetrics.length > 0
+        ? Math.round(
+            allMetrics.reduce((sum, m) => sum + (m.contextItems || 0), 0) / allMetrics.length
+          )
+        : 0
+
+      // Calculate client data usage (from metrics metadata - would need to query metadata field)
+      // For now, we'll estimate based on intent types that typically require client data
+      const clientDataIntents = ['profile', 'visits', 'appointments']
+      const clientDataUsageCount = allMetrics.filter(m => 
+        m.intent && clientDataIntents.includes(m.intent)
+      ).length
+      const clientDataUsageRate = allMetrics.length > 0
+        ? Math.round((clientDataUsageCount / allMetrics.length) * 100)
+        : 0
 
       return {
         totalMessages,
@@ -522,7 +766,12 @@ export class ChatbotService {
         avgLatency: Math.round(avgLatency._avg.latency || 0),
         successRate: totalMessages > 0 
           ? Math.round((successfulMessages / totalMessages) * 100) 
-          : 0
+          : 0,
+        handOffs: handOffStats.totalHandOffs,
+        intentDistribution,
+        contextUsageRate,
+        avgContextItems,
+        clientDataUsageRate
       }
     } catch (error) {
       console.error('[ChatbotService] Error getting chat stats:', error)
@@ -531,7 +780,81 @@ export class ChatbotService {
         successfulMessages: 0,
         totalSessions: 0,
         avgLatency: 0,
-        successRate: 0
+        successRate: 0,
+        handOffs: 0,
+        intentDistribution: {},
+        contextUsageRate: 0,
+        avgContextItems: 0,
+        clientDataUsageRate: 0
+      }
+    }
+  }
+
+  /**
+   * Get intent distribution statistics
+   */
+  async getIntentDistribution(clientId?: string) {
+    try {
+      const where = clientId ? { clientId } : {}
+
+      const metrics = await prisma.chatMetric.findMany({
+        where,
+        select: {
+          intent: true
+        }
+      })
+
+      const distribution = metrics.reduce((acc, metric) => {
+        const intent = metric.intent || 'unknown'
+        acc[intent] = (acc[intent] || 0) + 1
+        return acc
+      }, {} as Record<string, number>)
+
+      return distribution
+    } catch (error) {
+      console.error('[ChatbotService] Error getting intent distribution:', error)
+      return {}
+    }
+  }
+
+  /**
+   * Get context usage statistics
+   */
+  async getContextUsageStats(clientId?: string) {
+    try {
+      const where = clientId ? { clientId } : {}
+
+      const metrics = await prisma.chatMetric.findMany({
+        where,
+        select: {
+          usedContext: true,
+          contextItems: true
+        }
+      })
+
+      const totalMetrics = metrics.length
+      const withContext = metrics.filter(m => m.usedContext).length
+      const totalContextItems = metrics.reduce((sum, m) => sum + (m.contextItems || 0), 0)
+
+      return {
+        totalRequests: totalMetrics,
+        requestsWithContext: withContext,
+        contextUsageRate: totalMetrics > 0
+          ? Math.round((withContext / totalMetrics) * 100)
+          : 0,
+        avgContextItems: totalMetrics > 0
+          ? Math.round(totalContextItems / totalMetrics)
+          : 0,
+        totalContextItems
+      }
+    } catch (error) {
+      console.error('[ChatbotService] Error getting context usage stats:', error)
+      return {
+        totalRequests: 0,
+        requestsWithContext: 0,
+        contextUsageRate: 0,
+        avgContextItems: 0,
+        totalContextItems: 0
       }
     }
   }

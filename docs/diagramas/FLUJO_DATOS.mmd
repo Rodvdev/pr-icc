@@ -1,0 +1,87 @@
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#1e3a8a', 'primaryTextColor':'#fff', 'primaryBorderColor':'#1e40af', 'lineColor':'#3b82f6', 'secondaryColor':'#2563eb', 'tertiaryColor':'#60a5fa'}}}%%
+
+sequenceDiagram
+    actor Client as 👤 Cliente
+    participant Kiosk as 📺 Kiosk UI
+    participant NextAPI as ⚛️ Next.js API
+    participant Flask as 🐍 Flask API
+    participant Camera as 📷 ESP32 Camera
+    participant DB as 🗄️ PostgreSQL
+    participant S3 as 📦 S3 Storage
+
+    Note over Client,S3: Flujo 1: Registro de Cliente con Reconocimiento Facial
+    
+    Client->>Kiosk: Accede a kiosco
+    Kiosk->>Client: Muestra interfaz de registro
+    Client->>Kiosk: Completa formulario + captura facial
+    Kiosk->>NextAPI: POST /api/register (datos + imagen)
+    NextAPI->>DB: Guarda cliente en estado PENDING
+    NextAPI->>S3: Sube imagen facial
+    NextAPI->>Kiosk: Retorna success
+    
+    Note over Client,S3: Flujo 2: Aprobación y Creación de Perfil Facial
+    
+    Note over NextAPI: Admin aprueba registro
+    NextAPI->>NextAPI: Genera encoding facial
+    NextAPI->>DB: Crea FacialProfile (encoding JSON)
+    NextAPI->>Flask: POST /api/register (name, encoding)
+    Flask->>Flask: Guarda en encodings.npy
+    Flask->>NextAPI: Retorna success
+    NextAPI->>DB: Actualiza estado a APPROVED
+    
+    Note over Client,S3: Flujo 3: Reconocimiento Facial en Tiempo Real
+    
+    Camera->>Flask: HTTP Stream (MJPEG)
+    loop Cada Frame (cada 3 frames)
+        Flask->>Flask: Captura frame
+        Flask->>Flask: Detecta rostros (HOG)
+        Flask->>Flask: Genera encoding (128-dim)
+        Flask->>Flask: Compara con encodings conocidos
+        alt Match encontrado
+            Flask->>NextAPI: Webhook POST /api/facial-recognition/webhook
+            Note right of Flask: {result: {name, confidence}, camera_id}
+            NextAPI->>DB: Busca cliente por nombre
+            NextAPI->>DB: Crea DetectionEvent
+            NextAPI->>S3: Sube snapshot (opcional)
+            NextAPI->>Kiosk: WebSocket/SSE update
+            Kiosk->>Client: Muestra reconocimiento
+        end
+    end
+    
+    Note over Client,S3: Flujo 4: Chatbot con Contexto
+    
+    Client->>Kiosk: Envía mensaje al chatbot
+    Kiosk->>NextAPI: POST /api/chat {message, clientId}
+    NextAPI->>DB: Busca FAQs relevantes
+    NextAPI->>DB: Busca QA pairs relevantes
+    NextAPI->>NextAPI: Genera respuesta con contexto
+    NextAPI->>DB: Guarda ChatMessage (cliente)
+    NextAPI->>DB: Guarda ChatMessage (bot)
+    NextAPI->>DB: Registra ChatMetric (latency, intent)
+    NextAPI->>Kiosk: Retorna respuesta
+    Kiosk->>Client: Muestra respuesta
+    
+    Note over Client,S3: Flujo 5: Creación de Visita
+    
+    alt Reconocimiento exitoso
+        NextAPI->>DB: Detecta cliente reconocido
+        NextAPI->>DB: Crea Visit (status: WAITING)
+        NextAPI->>Kiosk: Notifica nueva visita
+        Kiosk->>Client: Muestra mensaje de bienvenida
+    else Cliente no reconocido
+        NextAPI->>DB: Crea Visit sin clientId (visitante)
+        NextAPI->>Kiosk: Solicita identificación manual
+    end
+    
+    Note over Client,S3: Flujo 6: Sincronización de Perfiles
+    
+    Note over NextAPI: Admin ejecuta sincronización
+    NextAPI->>DB: Obtiene todos FacialProfiles activos
+    loop Para cada perfil
+        NextAPI->>DB: Lee encoding
+        NextAPI->>Flask: POST /api/register (name, encoding)
+        Flask->>Flask: Actualiza encodings.npy
+        Flask->>NextAPI: Retorna success
+    end
+    NextAPI->>NextAPI: Retorna resumen (synced, failed)
+

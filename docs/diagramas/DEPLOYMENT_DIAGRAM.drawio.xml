@@ -1,0 +1,169 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Deployment Diagram" id="deployment-diagram">
+    <mxGraphModel dx="1422" dy="794" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        
+        <!-- Internet Layer -->
+        <mxCell id="internet-group" value="Internet" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="1090" height="140" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="users" value="👥 Usuarios" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="internet-group">
+          <mxGeometry x="40" y="60" width="30" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="clients" value="👤 Clientes" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="internet-group">
+          <mxGeometry x="130" y="60" width="30" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="admins" value="👔 Administradores" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="internet-group">
+          <mxGeometry x="220" y="60" width="30" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- AWS Cloud -->
+        <mxCell id="aws-group" value="AWS Cloud" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="220" width="1090" height="560" as="geometry" />
+        </mxCell>
+        
+        <!-- VPC -->
+        <mxCell id="vpc-group" value="VPC - Production" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=center;" vertex="1" parent="aws-group">
+          <mxGeometry x="20" y="40" width="1050" height="500" as="geometry" />
+        </mxCell>
+        
+        <!-- Public Subnet - Next.js -->
+        <mxCell id="public-subnet-1" value="Public Subnet - Next.js" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=center;" vertex="1" parent="vpc-group">
+          <mxGeometry x="20" y="40" width="500" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="alb" value="Application Load Balancer&#xa;HTTPS:443" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="public-subnet-1">
+          <mxGeometry x="180" y="40" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="nginx1" value="Nginx&#xa;Reverse Proxy&#xa;Port: 80/443" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="public-subnet-1">
+          <mxGeometry x="60" y="130" width="120" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="nextjs1" value="Next.js App&#xa;Node.js 18+&#xa;Port: 3005" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="public-subnet-1">
+          <mxGeometry x="220" y="130" width="120" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="nextjs2" value="Next.js App&#xa;Node.js 18+&#xa;Port: 3005" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="public-subnet-1">
+          <mxGeometry x="360" y="130" width="120" height="70" as="geometry" />
+        </mxCell>
+        
+        <!-- Public Subnet - Flask API -->
+        <mxCell id="public-subnet-2" value="Public Subnet - Flask API" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontStyle=1;align=center;" vertex="1" parent="vpc-group">
+          <mxGeometry x="540" y="40" width="500" height="220" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="nginx2" value="Nginx&#xa;Reverse Proxy&#xa;Port: 80/443" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="public-subnet-2">
+          <mxGeometry x="180" y="40" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="gunicorn1" value="Gunicorn&#xa;WSGI Server&#xa;Workers: 4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="public-subnet-2">
+          <mxGeometry x="60" y="130" width="120" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="gunicorn2" value="Gunicorn&#xa;WSGI Server&#xa;Workers: 4" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="public-subnet-2">
+          <mxGeometry x="220" y="130" width="120" height="70" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="flask" value="Flask API&#xa;Python 3.11+&#xa;face_recognition&#xa;Port: 5000" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="public-subnet-2">
+          <mxGeometry x="360" y="130" width="120" height="70" as="geometry" />
+        </mxCell>
+        
+        <!-- Private Subnet -->
+        <mxCell id="private-subnet" value="Private Subnet" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontStyle=1;align=center;" vertex="1" parent="vpc-group">
+          <mxGeometry x="20" y="280" width="1020" height="200" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rds" value="RDS PostgreSQL&#xa;Multi-AZ&#xa;Encrypted" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="private-subnet">
+          <mxGeometry x="400" y="50" width="120" height="130" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="s3-images" value="S3 Bucket&#xa;facial-images&#xa;Private" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="private-subnet">
+          <mxGeometry x="80" y="80" width="120" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="s3-snapshots" value="S3 Bucket&#xa;detection-snapshots&#xa;Private" style="shape=cylinder3;whiteSpace=wrap;html=1;boundedLbl=1;backgroundOutline=1;size=15;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="private-subnet">
+          <mxGeometry x="240" y="80" width="120" height="100" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cloudwatch" value="CloudWatch&#xa;Logs &amp; Metrics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="vpc-group">
+          <mxGeometry x="860" y="280" width="160" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Hardware Layer -->
+        <mxCell id="hardware-group" value="Hardware Layer" style="swimlane;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="40" y="820" width="1090" height="160" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="esp32-1" value="ESP32 Camera&#xa;192.168.1.100&#xa;HTTP Stream" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="hardware-group">
+          <mxGeometry x="80" y="60" width="140" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="esp32-2" value="ESP32 Camera&#xa;192.168.1.101&#xa;HTTP Stream" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="hardware-group">
+          <mxGeometry x="280" y="60" width="140" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="rpi" value="Raspberry Pi&#xa;Optional Gateway" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="hardware-group">
+          <mxGeometry x="480" y="60" width="140" height="80" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="arduino" value="Arduino&#xa;Optional Sensors" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="hardware-group">
+          <mxGeometry x="680" y="60" width="140" height="80" as="geometry" />
+        </mxCell>
+        
+        <!-- External Services -->
+        <mxCell id="external-group" value="External Services" style="swimlane;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;align=center;" vertex="1" parent="1">
+          <mxGeometry x="1160" y="40" width="200" height="940" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="dns" value="Route 53&#xa;DNS" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="external-group">
+          <mxGeometry x="30" y="60" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="cert" value="ACM&#xa;SSL Certificate" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="external-group">
+          <mxGeometry x="30" y="160" width="140" height="60" as="geometry" />
+        </mxCell>
+        
+        <!-- Connections -->
+        <mxCell id="edge1" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="users" target="alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge2" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="clients" target="alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge3" value="HTTPS" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="admins" target="alb">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge4" value="HTTP" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="alb" target="nginx1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge5" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1" source="nextjs1" target="flask">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge6" value="SQL" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="nextjs1" target="rds">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge7" value="HTTP Stream" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;" edge="1" parent="1" source="flask" target="esp32-1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+        <mxCell id="edge8" value="Logs" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeWidth=2;dashed=1;" edge="1" parent="1" source="nextjs1" target="cloudwatch">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+

@@ -70,11 +70,108 @@ export interface HandOffResult {
   estimatedWaitTime?: number
 }
 
+// ========== HELPER FUNCTIONS ==========
+
+/**
+ * Calculate relevance score based on keyword matches
+ * 
+ * Algorithm:
+ * - Tokenizes query and text into words
+ * - Counts exact matches (case-insensitive)
+ * - Counts partial matches (substring matches)
+ * - Weights title matches higher than content matches
+ * - Returns score between 0 and 1
+ * 
+ * @param query - Search query string
+ * @param title - Title text to search in
+ * @param content - Content text to search in
+ * @returns Relevance score between 0 and 1
+ */
+function calculateRelevance(
+  query: string,
+  title: string,
+  content: string
+): number {
+  if (!query || !title || !content) {
+    return 0
+  }
+
+  const queryLower = query.toLowerCase().trim()
+  const titleLower = title.toLowerCase()
+  const contentLower = content.toLowerCase()
+
+  // Tokenize query into words (remove common stop words)
+  const stopWords = new Set(['el', 'la', 'los', 'las', 'de', 'del', 'en', 'un', 'una', 'y', 'o', 'que', 'es', 'son', 'para', 'con', 'por', 'sobre', 'a', 'al', 'se', 'le', 'te', 'me', 'nos', 'les'])
+  const queryWords = queryLower
+    .split(/\s+/)
+    .filter(word => word.length > 2 && !stopWords.has(word))
+
+  if (queryWords.length === 0) {
+    // If query is too short or only stop words, use substring matching
+    if (titleLower.includes(queryLower) || contentLower.includes(queryLower)) {
+      return 0.3
+    }
+    return 0
+  }
+
+  let titleScore = 0
+  let contentScore = 0
+  let exactMatches = 0
+  let partialMatches = 0
+
+  // Check for exact phrase match (highest priority)
+  if (titleLower.includes(queryLower)) {
+    titleScore += 0.5
+    exactMatches++
+  }
+  if (contentLower.includes(queryLower)) {
+    contentScore += 0.3
+    exactMatches++
+  }
+
+  // Check for individual word matches
+  for (const word of queryWords) {
+    // Exact word match in title (weighted higher)
+    if (titleLower.includes(word)) {
+      titleScore += 0.3
+      exactMatches++
+    } else if (new RegExp(`\\b${word}\\w*`, 'i').test(titleLower)) {
+      // Partial match in title
+      titleScore += 0.1
+      partialMatches++
+    }
+
+    // Exact word match in content
+    if (contentLower.includes(word)) {
+      contentScore += 0.2
+      exactMatches++
+    } else if (new RegExp(`\\b${word}\\w*`, 'i').test(contentLower)) {
+      // Partial match in content
+      contentScore += 0.05
+      partialMatches++
+    }
+  }
+
+  // Calculate final relevance score
+  // Title matches are weighted 2x more than content matches
+  const totalScore = (titleScore * 2 + contentScore) / (queryWords.length * 2.5)
+  
+  // Boost score if there are exact matches
+  const exactMatchBoost = exactMatches > 0 ? 0.2 : 0
+  const partialMatchPenalty = partialMatches > exactMatches ? -0.1 : 0
+
+  // Normalize to 0-1 range
+  const relevance = Math.min(1, Math.max(0, totalScore + exactMatchBoost + partialMatchPenalty))
+
+  return Math.round(relevance * 100) / 100 // Round to 2 decimal places
+}
+
 // ========== MCP TOOLS ==========
 
 /**
  * FAQ Search Tool
  * Search for FAQs based on query and optional tags
+ * Uses keyword-based search with relevance scoring
  * 
  * @param query - Search query string
  * @param tags - Optional array of tags to filter by
@@ -85,9 +182,6 @@ export async function faqSearch(
   tags?: string[],
   topK: number = 5
 ): Promise<FAQSearchResult> {
-  // Phase 1-2: Stub implementation
-  // Phase 3+: Implement with full-text search and vector similarity
-  
   try {
     const where: Record<string, unknown> = {
       status: 'PUBLISHED',
@@ -99,22 +193,27 @@ export async function faqSearch(
       }
     }
 
-    const faqs = await prisma.fAQ.findMany({
+    // Get all published FAQs (we'll filter and rank by relevance)
+    const allFaqs = await prisma.fAQ.findMany({
       where,
-      take: topK,
-      orderBy: {
-        createdAt: 'desc'
-      }
     })
 
+    // Calculate relevance for each FAQ
+    const faqsWithRelevance = allFaqs.map((faq) => ({
+      id: faq.id,
+      title: faq.title,
+      answer: faq.answer,
+      tags: faq.tags,
+      relevance: calculateRelevance(query, faq.title, faq.answer)
+    }))
+
+    // Sort by relevance (descending) and take top K
+    const sortedFaqs = faqsWithRelevance
+      .sort((a, b) => b.relevance - a.relevance)
+      .slice(0, topK)
+
     return {
-      items: faqs.map((faq: { id: string; title: string; answer: string; tags: string[] }) => ({
-        id: faq.id,
-        title: faq.title,
-        answer: faq.answer,
-        tags: faq.tags,
-        relevance: 0.8 // Mock relevance score
-      }))
+      items: sortedFaqs
     }
   } catch (error) {
     console.error('[MCP] FAQ Search Error:', error)
@@ -162,7 +261,7 @@ export async function faqUpsert(faq: FAQData): Promise<{ success: boolean; id?: 
 
 /**
  * QA Search Tool
- * Search in question-answer pairs
+ * Search in question-answer pairs using keyword-based relevance
  * 
  * @param query - Search query
  * @param topK - Number of results (default: 5)
@@ -171,27 +270,29 @@ export async function qaSearch(
   query: string,
   topK: number = 5
 ): Promise<QASearchResult> {
-  // Phase 1-2: Basic implementation
-  // Phase 5+: Implement with semantic search
-  
   try {
-    const qaPairs = await prisma.qAPair.findMany({
+    // Get all active QA pairs (we'll filter and rank by relevance)
+    const allQAPairs = await prisma.qAPair.findMany({
       where: {
         isActive: true,
       },
-      take: topK,
-      orderBy: {
-        createdAt: 'desc'
-      }
     })
 
+    // Calculate relevance for each QA pair
+    const qaPairsWithRelevance = allQAPairs.map((qa) => ({
+      id: qa.id,
+      question: qa.question,
+      answer: qa.answer,
+      relevance: calculateRelevance(query, qa.question, qa.answer)
+    }))
+
+    // Sort by relevance (descending) and take top K
+    const sortedQAPairs = qaPairsWithRelevance
+      .sort((a, b) => b.relevance - a.relevance)
+      .slice(0, topK)
+
     return {
-      items: qaPairs.map((qa: { id: string; question: string; answer: string }) => ({
-        id: qa.id,
-        question: qa.question,
-        answer: qa.answer,
-        relevance: 0.75 // Mock relevance
-      }))
+      items: sortedQAPairs
     }
   } catch (error) {
     console.error('[MCP] QA Search Error:', error)
@@ -388,6 +489,7 @@ export async function getKPIs(
 /**
  * Chat Hand-off Tool
  * Transfer chat to human agent
+ * Records hand-off in both chat messages and metrics
  * 
  * @param sessionId - Chat session ID
  * @param reason - Reason for hand-off
@@ -399,18 +501,33 @@ export async function chatHandOff(
   // Phase 5+: Full implementation with queue system
   
   try {
-    // Log the hand-off request
+    // Get session to find clientId if available
+    const session = await prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: { clientId: true }
+    })
+
+    // Log the hand-off request as a chat message
     await prisma.chatMessage.create({
       data: {
         sessionId,
         actor: 'BOT',
         content: `Transferencia solicitada a agente humano. Razón: ${reason || 'No especificada'}`,
+        intent: 'handoff',
         metadata: {
           handOff: true,
           reason
         }
       }
     })
+
+    // Record hand-off metric (import chatbotService dynamically to avoid circular dependency)
+    const { chatbotService } = await import('@/services/chatbot.service')
+    await chatbotService.recordHandOff(
+      sessionId,
+      session?.clientId || null,
+      reason
+    )
 
     return {
       status: 'QUEUED',
@@ -466,7 +583,7 @@ export const mcpTools = {
 
 export type MCPToolName = keyof typeof mcpTools
 
-// ========== HELPER FUNCTIONS ==========
+// ========== MCP TOOL EXECUTION HELPERS ==========
 
 /**
  * Execute an MCP tool by name

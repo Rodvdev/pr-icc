@@ -1,0 +1,120 @@
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#1e3a8a', 'primaryTextColor':'#fff', 'primaryBorderColor':'#1e40af', 'lineColor':'#3b82f6', 'secondaryColor':'#2563eb', 'tertiaryColor':'#60a5fa'}}}%%
+
+graph TB
+    subgraph "Internet"
+        Users[👥 Usuarios]
+        Clients[👤 Clientes]
+        Admins[👔 Administradores]
+    end
+
+    subgraph "AWS Cloud"
+        subgraph "VPC - Production"
+            subgraph "Public Subnet"
+                ALB[🔀 Application Load Balancer<br/>HTTPS:443]
+                
+                subgraph "EC2 - Next.js Application"
+                    NGINX1[🌐 Nginx<br/>Reverse Proxy<br/>Port: 80/443]
+                    NEXTJS1[⚛️ Next.js App<br/>Node.js 18+<br/>Port: 3005]
+                    NEXTJS2[⚛️ Next.js App<br/>Node.js 18+<br/>Port: 3005]
+                end
+                
+                subgraph "EC2 - Flask API (Facial Recognition)"
+                    NGINX2[🌐 Nginx<br/>Reverse Proxy<br/>Port: 80/443]
+                    GUNICORN1[🐍 Gunicorn<br/>WSGI Server<br/>Workers: 4]
+                    GUNICORN2[🐍 Gunicorn<br/>WSGI Server<br/>Workers: 4]
+                    FLASK[🐍 Flask API<br/>Python 3.11+<br/>face_recognition<br/>Port: 5000]
+                end
+            end
+            
+            subgraph "Private Subnet"
+                RDS[(🗄️ RDS PostgreSQL<br/>Multi-AZ<br/>Encrypted)]
+                
+                subgraph "S3 Buckets"
+                    S3_IMAGES[📦 S3 Bucket<br/>facial-images<br/>Private]
+                    S3_SNAPSHOTS[📦 S3 Bucket<br/>detection-snapshots<br/>Private]
+                end
+            end
+            
+            CloudWatch[📊 CloudWatch<br/>Logs & Metrics]
+        end
+    end
+
+    subgraph "Hardware Layer"
+        subgraph "Branch Location 1"
+            ESP32_1[📷 ESP32 Camera<br/>192.168.1.100<br/>HTTP Stream]
+            RPI_1[🍓 Raspberry Pi<br/>Optional Gateway]
+        end
+        
+        subgraph "Branch Location 2"
+            ESP32_2[📷 ESP32 Camera<br/>192.168.1.101<br/>HTTP Stream]
+        end
+        
+        subgraph "IoT Devices"
+            ARDUINO[🔌 Arduino<br/>Optional Sensors]
+        end
+    end
+
+    subgraph "External Services"
+        DNS[🌐 Route 53<br/>DNS]
+        CERT[🔒 ACM<br/>SSL Certificate]
+    end
+
+    %% User Connections
+    Users -->|HTTPS| DNS
+    Clients -->|HTTPS| DNS
+    Admins -->|HTTPS| DNS
+    DNS -->|HTTPS| ALB
+    CERT -.->|SSL/TLS| ALB
+
+    %% Load Balancer to Next.js
+    ALB -->|HTTP:3005| NGINX1
+    NGINX1 --> NEXTJS1
+    NGINX1 --> NEXTJS2
+
+    %% Next.js to RDS
+    NEXTJS1 -->|SQL| RDS
+    NEXTJS2 -->|SQL| RDS
+    NGINX1 -->|SQL| RDS
+
+    %% Next.js to Flask API
+    NEXTJS1 -.->|HTTP/Webhook| NGINX2
+    NEXTJS2 -.->|HTTP/Webhook| NGINX2
+    NGINX2 --> GUNICORN1
+    NGINX2 --> GUNICORN2
+    GUNICORN1 --> FLASK
+    GUNICORN2 --> FLASK
+
+    %% Flask API to Hardware
+    FLASK -->|HTTP Stream| ESP32_1
+    FLASK -->|HTTP Stream| ESP32_2
+    FLASK -.->|MQTT Optional| RPI_1
+    RPI_1 --> ESP32_1
+
+    %% Flask API to S3
+    FLASK -->|Upload Images| S3_IMAGES
+    FLASK -->|Upload Snapshots| S3_SNAPSHOTS
+
+    %% Next.js to S3
+    NEXTJS1 -->|Read/Write| S3_IMAGES
+    NEXTJS2 -->|Read/Write| S3_IMAGES
+
+    %% Monitoring
+    NEXTJS1 -.->|Logs| CloudWatch
+    NEXTJS2 -.->|Logs| CloudWatch
+    FLASK -.->|Logs| CloudWatch
+    RDS -.->|Metrics| CloudWatch
+
+    %% IoT Optional
+    ARDUINO -.->|MQTT/HTTP| RPI_1
+
+    %% Styling
+    classDef aws fill:#FF9900,stroke:#232F3E,stroke-width:2px,color:#fff
+    classDef hardware fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    classDef database fill:#336791,stroke:#1e3a8a,stroke-width:2px,color:#fff
+    classDef external fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+
+    class ALB,RDS,S3_IMAGES,S3_SNAPSHOTS,CloudWatch aws
+    class ESP32_1,ESP32_2,RPI_1,ARDUINO hardware
+    class RDS database
+    class DNS,CERT external
+

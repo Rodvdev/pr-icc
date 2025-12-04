@@ -57,6 +57,8 @@ import {
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { OpenAIConfigAlert } from "@/components/admin/openai-config-alert"
+import { isOpenAIConfigured } from "@/lib/openai"
 
 interface SystemSettings {
   siteName: string
@@ -224,6 +226,7 @@ export default function SettingsPage() {
           <TabsTrigger value="users">Usuarios</TabsTrigger>
           <TabsTrigger value="notifications">Notificaciones</TabsTrigger>
           <TabsTrigger value="facial-recognition">Reconocimiento Facial</TabsTrigger>
+          <TabsTrigger value="ai-chatbot">IA / Chatbot</TabsTrigger>
           <TabsTrigger value="system">Sistema</TabsTrigger>
         </TabsList>
 
@@ -808,6 +811,48 @@ export default function SettingsPage() {
                   <Save className="mr-2 h-4 w-4" />
                   {saveStatus === 'saving' ? 'Guardando...' : 'Guardar Cambios'}
                 </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* AI / Chatbot Settings */}
+        <TabsContent value="ai-chatbot" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Key className="h-5 w-5" />
+                Configuración de OpenAI
+              </CardTitle>
+              <CardDescription>
+                Configuración del módulo de IA para el chat
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <OpenAIConfigAlert isConfigured={isOpenAIConfigured()} showDetails={true} />
+              
+              <div className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <h4 className="font-semibold mb-2">Información del Módulo IA</h4>
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    <li>• Modelo: GPT-3.5-turbo</li>
+                    <li>• Fallback: FAQs y respuestas preconfiguradas</li>
+                    <li>• Acceso a datos del cliente cuando está autenticado</li>
+                    <li>• System prompt avanzado de seguridad bancaria</li>
+                  </ul>
+                </div>
+                
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <h4 className="font-semibold mb-2 text-blue-900">Documentación</h4>
+                  <p className="text-sm text-blue-800 mb-2">
+                    Para más información sobre la configuración y uso del módulo IA, consulta la documentación completa.
+                  </p>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="/AI_CHAT_MODULE.md" target="_blank" rel="noopener noreferrer">
+                      Ver Documentación
+                    </a>
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

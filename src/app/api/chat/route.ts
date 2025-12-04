@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { chatbotService } from "@/services/chatbot.service"
 import { rateLimit, sanitizeInput, addSecurityHeaders, validateCSRF } from "@/lib/security"
+import { isOpenAIConfigured } from "@/lib/openai"
 
 // Rate limiting configuration
 const chatRateLimit = rateLimit({
@@ -83,7 +84,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    const { message } = body
+    const { message, sessionId: providedSessionId } = body
 
     // Security: Input validation
     if (!message || typeof message !== 'string') {
@@ -93,6 +94,27 @@ export async function POST(req: NextRequest) {
           { status: 400 }
         )
       )
+    }
+
+    // Security: Validate sessionId format if provided
+    if (providedSessionId !== undefined && providedSessionId !== null) {
+      if (typeof providedSessionId !== 'string' || providedSessionId.trim().length === 0) {
+        return addSecurityHeaders(
+          NextResponse.json(
+            { success: false, error: "sessionId must be a non-empty string if provided" },
+            { status: 400 }
+          )
+        )
+      }
+      // Basic format validation: should be alphanumeric with hyphens/underscores, reasonable length
+      if (!/^[a-zA-Z0-9_-]{1,100}$/.test(providedSessionId)) {
+        return addSecurityHeaders(
+          NextResponse.json(
+            { success: false, error: "Invalid sessionId format" },
+            { status: 400 }
+          )
+        )
+      }
     }
 
     // Security: Sanitize input
@@ -131,7 +153,7 @@ export async function POST(req: NextRequest) {
 
     intent = chatResponse.intent
 
-    // Save chat interaction to database
+    // Save chat interaction to database (with validated sessionId if provided)
     let sessionId: string | null = null
     try {
       const result = await chatbotService.saveChatInteraction(
@@ -143,7 +165,8 @@ export async function POST(req: NextRequest) {
           confidence: chatResponse.confidence,
           sources: chatResponse.sources,
           contextItems: context.faqs.length + context.qaPairs.length
-        }
+        },
+        providedSessionId || undefined
       )
       sessionId = result.sessionId
     } catch (dbError) {
@@ -187,7 +210,11 @@ export async function POST(req: NextRequest) {
           contextUsed: context.faqs.length + context.qaPairs.length > 0,
           usedClientData: chatResponse.usedClientData || false,
           usedOpenAI: chatResponse.usedOpenAI || false,
-          usage: chatResponse.usage
+          usage: chatResponse.usage,
+          openAIConfigured: isOpenAIConfigured(),
+          note: !isOpenAIConfigured() 
+            ? "Respuesta generada con FAQs y respuestas preconfiguradas. Para una experiencia completa con IA, configure OpenAI."
+            : undefined
         }
       })
     )

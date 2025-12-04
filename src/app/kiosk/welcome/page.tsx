@@ -17,9 +17,9 @@ import Link from "next/link"
 
 interface ClientData {
   id: string
-  name: string
-  email: string
-  lastVisit?: Date
+  name: string | null
+  email: string | null
+  lastVisit?: string | null
   upcomingAppointments?: number
 }
 
@@ -54,7 +54,7 @@ function KioskWelcomeContent() {
       const fetchClientData = async () => {
         try {
           const response = await fetch(`/api/kiosk/client/${clientId}`)
-          let data: { id?: string; name?: string; email?: string; message?: string } | null = null
+          let data: { id?: string; name?: string; email?: string; lastVisit?: string | null; upcomingAppointments?: number; message?: string } | null = null
           try {
             data = await response.json()
           } catch {
@@ -66,6 +66,10 @@ function KioskWelcomeContent() {
             // Use message from server if provided
             const msg = data?.message || `Server returned ${response.status}`
             throw new Error(msg)
+          }
+
+          if (!data || !data.id) {
+            throw new Error('Invalid client data received')
           }
 
           // Normalize shape: our API returns { ok: true, id, name, ... }
@@ -133,7 +137,7 @@ function KioskWelcomeContent() {
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-8 h-8" />
-                <h1 className="font-display text-3xl font-bold">¡Bienvenido de vuelta, {client.name.split(' ')[0]}!</h1>
+                <h1 className="font-display text-3xl font-bold">¡Bienvenido de vuelta, {client.name ? client.name.split(' ')[0] : 'Cliente'}!</h1>
               </div>
               <p className="text-primary-foreground/80">
                 {client.lastVisit 

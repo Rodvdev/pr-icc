@@ -22,6 +22,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useChatContext } from "@/contexts/chat-context"
+import { ChatConfigStatus } from "@/components/chat/chat-config-status"
 
 interface ChatSidebarWrapperProps {
   userType?: "client" | "admin"
@@ -169,6 +170,9 @@ export function ChatSidebarWrapper({ userType = "client" }: ChatSidebarWrapperPr
         {/* Messages Area */}
         <ScrollArea className="flex-1 p-4" ref={scrollRef}>
           <div className="space-y-4">
+            {/* Configuration Status Alert */}
+            <ChatConfigStatus />
+            
             {messages.map((message) => (
               <div
                 key={message.id}

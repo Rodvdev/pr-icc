@@ -1,0 +1,123 @@
+%%{init: {'theme':'base', 'themeVariables': { 'primaryColor':'#1e3a8a', 'primaryTextColor':'#fff', 'primaryBorderColor':'#1e40af', 'lineColor':'#3b82f6', 'secondaryColor':'#2563eb', 'tertiaryColor':'#60a5fa'}}}%%
+
+graph TB
+    subgraph "Frontend Layer"
+        ADMIN_UI[👔 Admin Panel<br/>Next.js Pages]
+        CLIENT_UI[👤 Client Portal<br/>Next.js Pages]
+        KIOSK_UI[📺 Kiosk Interface<br/>Next.js Pages]
+    end
+
+    subgraph "Next.js Application"
+        subgraph "API Routes"
+            AUTH_API[🔐 Auth API<br/>/api/auth]
+            CLIENT_API[👥 Client API<br/>/api/clients]
+            BRANCH_API[🏢 Branch API<br/>/api/branches]
+            CAMERA_API[📷 Camera API<br/>/api/cameras]
+            FACIAL_API[🤖 Facial Recognition API<br/>/api/facial-recognition]
+            CHAT_API[💬 Chat API<br/>/api/chat]
+            KIOSK_API[📺 Kiosk API<br/>/api/kiosk]
+            FAQ_API[❓ FAQ API<br/>/api/faqs]
+        end
+
+        subgraph "Services Layer"
+            CLIENT_SERVICE[ClientService<br/>Business Logic]
+            FACIAL_SERVICE[FacialRecognitionService<br/>Facial Logic]
+            CHATBOT_SERVICE[ChatbotService<br/>Chat Logic]
+            BRANCH_SERVICE[BranchService<br/>Branch Logic]
+            CAMERA_SERVICE[CameraService<br/>Camera Logic]
+            FAQ_SERVICE[FAQService<br/>FAQ Logic]
+        end
+
+        subgraph "Lib Layer"
+            PRISMA_LIB[Prisma Client<br/>Database ORM]
+            AUTH_LIB[NextAuth<br/>Authentication]
+            SECURITY_LIB[Security Utils<br/>Validation & Rate Limit]
+            MCP_LIB[MCP Tools<br/>Context Retrieval]
+        end
+    end
+
+    subgraph "External APIs"
+        FLASK_API[🐍 Flask API<br/>Facial Recognition<br/>Python]
+    end
+
+    subgraph "Database Layer"
+        POSTGRES[(🗄️ PostgreSQL<br/>Prisma Schema)]
+    end
+
+    subgraph "Storage Layer"
+        S3_IMAGES[(📦 S3<br/>Images)]
+        S3_SNAPSHOTS[(📦 S3<br/>Snapshots)]
+    end
+
+    subgraph "Hardware Layer"
+        ESP32[📷 ESP32 Cameras<br/>HTTP Stream]
+    end
+
+    %% Frontend to API Routes
+    ADMIN_UI -->|HTTP| AUTH_API
+    ADMIN_UI -->|HTTP| CLIENT_API
+    ADMIN_UI -->|HTTP| BRANCH_API
+    ADMIN_UI -->|HTTP| CAMERA_API
+    ADMIN_UI -->|HTTP| FACIAL_API
+    ADMIN_UI -->|HTTP| FAQ_API
+    
+    CLIENT_UI -->|HTTP| AUTH_API
+    CLIENT_UI -->|HTTP| CLIENT_API
+    CLIENT_UI -->|HTTP| CHAT_API
+    
+    KIOSK_UI -->|HTTP| KIOSK_API
+    KIOSK_UI -->|HTTP| CHAT_API
+    KIOSK_UI -->|HTTP| FACIAL_API
+
+    %% API Routes to Services
+    AUTH_API --> AUTH_LIB
+    CLIENT_API --> CLIENT_SERVICE
+    BRANCH_API --> BRANCH_SERVICE
+    CAMERA_API --> CAMERA_SERVICE
+    FACIAL_API --> FACIAL_SERVICE
+    CHAT_API --> CHATBOT_SERVICE
+    FAQ_API --> FAQ_SERVICE
+    KIOSK_API --> CLIENT_SERVICE
+    KIOSK_API --> FACIAL_SERVICE
+
+    %% Services to Lib
+    CLIENT_SERVICE --> PRISMA_LIB
+    FACIAL_SERVICE --> PRISMA_LIB
+    FACIAL_SERVICE --> FLASK_API
+    CHATBOT_SERVICE --> PRISMA_LIB
+    CHATBOT_SERVICE --> MCP_LIB
+    BRANCH_SERVICE --> PRISMA_LIB
+    CAMERA_SERVICE --> PRISMA_LIB
+    FAQ_SERVICE --> PRISMA_LIB
+
+    %% Lib to Database
+    PRISMA_LIB --> POSTGRES
+    MCP_LIB --> POSTGRES
+
+    %% Services to External APIs
+    FACIAL_SERVICE -.->|HTTP/Webhook| FLASK_API
+
+    %% External APIs to Hardware
+    FLASK_API -->|HTTP Stream| ESP32
+
+    %% Services to Storage
+    FACIAL_SERVICE -->|Upload| S3_IMAGES
+    FACIAL_SERVICE -->|Upload| S3_SNAPSHOTS
+
+    %% Styling
+    classDef frontend fill:#4CAF50,stroke:#2E7D32,stroke-width:2px,color:#fff
+    classDef api fill:#2196F3,stroke:#1565C0,stroke-width:2px,color:#fff
+    classDef service fill:#FF9800,stroke:#E65100,stroke-width:2px,color:#fff
+    classDef lib fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px,color:#fff
+    classDef database fill:#607D8B,stroke:#37474F,stroke-width:2px,color:#fff
+    classDef external fill:#F44336,stroke:#C62828,stroke-width:2px,color:#fff
+    classDef hardware fill:#795548,stroke:#5D4037,stroke-width:2px,color:#fff
+
+    class ADMIN_UI,CLIENT_UI,KIOSK_UI frontend
+    class AUTH_API,CLIENT_API,BRANCH_API,CAMERA_API,FACIAL_API,CHAT_API,KIOSK_API,FAQ_API api
+    class CLIENT_SERVICE,FACIAL_SERVICE,CHATBOT_SERVICE,BRANCH_SERVICE,CAMERA_SERVICE,FAQ_SERVICE service
+    class PRISMA_LIB,AUTH_LIB,SECURITY_LIB,MCP_LIB lib
+    class POSTGRES,S3_IMAGES,S3_SNAPSHOTS database
+    class FLASK_API external
+    class ESP32 hardware
+

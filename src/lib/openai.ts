@@ -70,6 +70,18 @@ export async function generateChatCompletion(
       stream: options.stream ?? false,
     })
 
+    // Handle stream responses
+    if (options.stream) {
+      // For streaming, we'd need to handle the stream differently
+      // For now, throw an error as streaming is not fully implemented
+      throw new Error('Streaming responses are not yet supported')
+    }
+
+    // Type guard: ensure we have a ChatCompletion, not a Stream
+    if (!('choices' in completion)) {
+      throw new Error('Unexpected response type from OpenAI')
+    }
+
     const choice = completion.choices[0]
     if (!choice || !choice.message) {
       throw new Error('No response from OpenAI')

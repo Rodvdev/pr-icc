@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import { Send, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ChatMessage } from "./ChatMessage"
+import { ChatConfigStatus } from "@/components/chat/chat-config-status"
 
 interface Message {
   id: string
@@ -127,6 +128,9 @@ export function ChatInterface({
     <div className="flex flex-col h-full relative">
       {/* Messages container */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-32">
+        {/* Configuration Status Alert */}
+        <ChatConfigStatus />
+        
         {messages.map((message) => (
           <ChatMessage
             key={message.id}

@@ -14,6 +14,8 @@ import Link from "next/link"
 import { clientService, branchService, cameraService } from "@/services"
 import { getRecentAuditLogs } from "@/lib/audit"
 import { prisma } from "@/lib/prisma"
+import { OpenAIConfigAlert } from "@/components/admin/openai-config-alert"
+import { isOpenAIConfigured } from "@/lib/openai"
 
 export default async function AdminDashboard() {
   // Fetch real statistics from services
@@ -96,8 +98,13 @@ export default async function AdminDashboard() {
     },
   ]
 
+  const openAIConfigured = isOpenAIConfigured()
+
   return (
     <div className="space-y-8 animate-fade-in">
+      {/* OpenAI Configuration Alert */}
+      <OpenAIConfigAlert isConfigured={openAIConfigured} showDetails={true} />
+      
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {stats.map((stat, index) => (

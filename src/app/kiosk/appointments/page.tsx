@@ -26,8 +26,8 @@ import { cn } from "@/lib/utils"
 
 interface ClientData {
   id: string
-  name: string
-  email: string
+  name: string | null
+  email: string | null
 }
 
 function KioskAppointmentsContent() {
@@ -76,7 +76,12 @@ function KioskAppointmentsContent() {
             throw new Error(msg)
           }
 
-          const clientData = {
+          if (!data || !data.id) {
+            throw new Error('Invalid client data received')
+          }
+
+          // At this point, data is guaranteed to be non-null
+          const clientData: ClientData = {
             id: data.id,
             name: data.name ?? null,
             email: data.email ?? null,
